@@ -1,6 +1,13 @@
 # VideoGPT
 Implementation of VideoGPT
 
+https://github.com/wilson1yan/VideoGPT
+
+VideoGPT utilizes a two model, two stage approach where batches of video frames
+from videos are first used to train a VQ-VAE with 3D Conv layers, and the resulting latent
+codebook is used as a vocabulary for a transformer decoder to learn to model sequences of
+video frames.
+
 This project will require:
 
 Part 1: VAE - CIFAR10
