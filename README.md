@@ -5,7 +5,7 @@ This project will require:
 
 Part 1: VAE - CIFAR10
 
-Part 2: VQ-VAE (Conv2D) - CIFAR10
+Part 2: VQ-VAE/VQ-VAE 2 (Conv2D) - CIFAR10
 
 Part 2.5: FSQ VQ-VAE (Conv2D) - CIFAR10
 
