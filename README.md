@@ -6,7 +6,8 @@ https://github.com/wilson1yan/VideoGPT
 VideoGPT utilizes a two model, two stage approach where batches of video frames
 from videos are first used to train a VQ-VAE with 3D Conv layers, and the resulting latent
 codebook is used as a vocabulary for a transformer decoder to learn to model sequences of
-video frames.
+video frames in latent space. The sequences of latents are then used by the VQ-VAE decoder
+to map back to a sequence of frames in image space.
 
 This project will require:
 
