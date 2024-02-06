@@ -5,6 +5,21 @@ https://github.com/wilson1yan/VideoGPT
 
 Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
 
+## Project Roadmap
+
+- [X] Part 1: VAE (for knowledge/context) - CIFAR10
+
+- [X] Part 2: VQ-VAE/VQ-VAE 2 (Conv2D) - CIFAR10
+
+- [ ] Part 3: VQ-VAE (Conv3D) - Steamboat Willie
+
+- [ ] Part 4: Transformer Decoder - latent codes from Part 3
+
+- [ ] Part 5: VideoGPT - put it all together
+
+- [ ] Part 6: Try Improvements
+
+
 VideoGPT utilizes a two-model, two-stage approach
 
 ## VQ-VAE (Visual Compression)
@@ -21,17 +36,3 @@ image space using the pre-trained VQ-VAE decoder
 
 ## Possible Improvements to try:
 - [ ] Finite Scalar Quantization in place of explicit codebook
-
-This project will require:
-
-- [X] Part 1: VAE (for knowledge/context) - CIFAR10
-
-- [X] Part 2: VQ-VAE/VQ-VAE 2 (Conv2D) - CIFAR10
-
-- [ ] Part 3: VQ-VAE (Conv3D) - Steamboat Willie
-
-- [ ] Part 4: Transformer Decoder - latent codes from Part 3
-
-- [ ] Part 5: VideoGPT - put it all together
-
-- [ ] Part 6: Try Improvements
