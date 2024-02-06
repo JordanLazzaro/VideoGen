@@ -13,12 +13,10 @@ to map back to a sequence of frames in image space.
 
 This project will require:
 
-Part 1: VAE - CIFAR10
+[X] Part 1: VAE - CIFAR10
 
-Part 2: VQ-VAE/VQ-VAE 2 (Conv2D) - CIFAR10
+[X] Part 2: VQ-VAE/VQ-VAE 2 (Conv2D) - CIFAR10
 
-Part 2.5: FSQ VQ-VAE (Conv2D) - CIFAR10
+[] Part 3: (FSQ?) VQ-VAE (Conv3D) - Steamboat Willie
 
-Part 3: (FSQ?) VQ-VAE (Conv3D) - Steamboat Willie
-
-Part 4: Transformer Decoder - latent codes from Part 3
+[] Part 4: Transformer Decoder - latent codes from Part 3
