@@ -28,6 +28,10 @@ This project will require:
 
 - [X] Part 2: VQ-VAE/VQ-VAE 2 (Conv2D) - CIFAR10
 
-- [ ] Part 3: (FSQ?) VQ-VAE (Conv3D) - Steamboat Willie
+- [ ] Part 3: VQ-VAE (Conv3D) - Steamboat Willie
 
 - [ ] Part 4: Transformer Decoder - latent codes from Part 3
+
+- [ ] Part 5: VideoGPT - put it all together
+
+- [ ] Part 6: Try Improvements
