@@ -118,10 +118,13 @@ class Decoder(torch.nn.Module):
             padding=(1, 1, 1)
         )
 
+        self.out_act = nn.Sigmoid()
+
     def forward(self, x):
         x = self.res_blocks(x)
         x = self.upsample_blocks(x)
         x = self.out_layer(x)
+        x = self.out_act(x)
         return x
 
 

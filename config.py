@@ -1,3 +1,26 @@
+def get_num_downsample_layers(img_size):
+    """
+    Get the number of strided Conv2D layers
+    required to produce a 2x2 output volume
+    """
+    if img_size < 2:
+        raise ValueError("Image size must be at least 2x2.")
+
+    # Calculate the minimum number of downsample layers required for 2x2 final
+    num_layers = math.ceil(math.log2(img_size / 2))
+    return num_layers
+
+def build_channel_dims(start_channels, nlayers):
+    """
+    Construct a list of channel counts for nlayers downsample layers
+    assuming the channels double as spatial dims halve
+    """
+    channels = []
+    for _ in range(nlayers):
+        channels.append(start_channels)
+        start_channels *= 2
+    return channels
+
 class VideoVQVAEConfig:
     def __init__(self):
         # dataset properties
@@ -8,12 +31,12 @@ class VideoVQVAEConfig:
         self.save_top_k = 1
         # training
         self.train_split = 0.8
-        self.batch_size = 8
+        self.batch_size = 32
         self.max_epochs = 120
         self.training_steps = 100000
         self.num_workers = 2
         # optimizer
-        self.lr = 3e-4
+        self.lr = 1e-4
         self.beta1 = 0.9
         self.beta2 = 0.999
         self.weight_decay = 0.0 # 1e-2
@@ -32,7 +55,7 @@ class VideoVQVAEConfig:
         self.ema_gamma = 0.99
         # encoder/decoder
         self.hidden_channels = 256
-        self.nblocks = 1
+        self.nblocks = 2
         self.nlayers = 4
 
     def update(self, updates):
