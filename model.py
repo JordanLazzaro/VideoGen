@@ -30,6 +30,14 @@ class ResBlock(nn.Module):
             nn.ReLU(),
             nn.Conv3d(
                 in_channels=in_channels,
+                out_channels=in_channels,
+                kernel_size=3,
+                padding=1
+            ),
+            nn.BatchNorm3d(in_channels),
+            nn.ReLU(),
+            nn.Conv3d(
+                in_channels=in_channels,
                 out_channels=out_channels,
                 kernel_size=1
             ),

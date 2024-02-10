@@ -32,11 +32,11 @@ class VideoVQVAEConfig:
         # training
         self.train_split = 0.8
         self.batch_size = 32
-        self.max_epochs = 120
+        self.max_epochs = 200
         self.training_steps = 100000
         self.num_workers = 2
         # optimizer
-        self.lr = 1e-4
+        self.lr = 1.5e-4
         self.beta1 = 0.9
         self.beta2 = 0.999
         self.weight_decay = 0.0 # 1e-2
@@ -55,7 +55,7 @@ class VideoVQVAEConfig:
         self.ema_gamma = 0.99
         # encoder/decoder
         self.hidden_channels = 256
-        self.nblocks = 2
+        self.nblocks = 4
         self.nlayers = 4
 
     def update(self, updates):
