@@ -11,7 +11,7 @@ Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
 
 - [X] Part 2: VQ-VAE/VQ-VAE 2 (Conv2D) - CIFAR10
 
-- [ ] Part 3: VQ-VAE (Conv3D) - Steamboat Willie
+- [X] Part 3: VQ-VAE (Conv3D) - Steamboat Willie
 
 - [ ] Part 3.5: Finite Scalar Quantization in place of explicit codebook - normal codebook proving to be a huge pain at the moment :(
 
