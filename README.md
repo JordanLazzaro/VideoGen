@@ -3,6 +3,8 @@ Implementation of VideoGPT
 
 https://github.com/wilson1yan/VideoGPT
 
+FSQ: https://arxiv.org/abs/2309.15505
+
 Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
 
 ## Project Roadmap
