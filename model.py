@@ -19,25 +19,35 @@ class ResBlock(nn.Module):
         else:
             self.identity = nn.Identity()
 
+        hidden_channels = in_channels // 4
+
         self.block = nn.Sequential(
             nn.Conv3d(
                 in_channels=in_channels,
-                out_channels=in_channels,
+                out_channels=hidden_channels,
                 kernel_size=3,
                 padding=1
             ),
-            nn.BatchNorm3d(in_channels),
+            nn.BatchNorm3d(hidden_channels),
             nn.ReLU(),
             nn.Conv3d(
-                in_channels=in_channels,
-                out_channels=in_channels,
+                in_channels=hidden_channels,
+                out_channels=hidden_channels,
                 kernel_size=3,
                 padding=1
             ),
-            nn.BatchNorm3d(in_channels),
+            nn.BatchNorm3d(hidden_channels),
             nn.ReLU(),
             nn.Conv3d(
-                in_channels=in_channels,
+                in_channels=hidden_channels,
+                out_channels=hidden_channels,
+                kernel_size=3,
+                padding=1
+            ),
+            nn.BatchNorm3d(hidden_channels),
+            nn.ReLU(),
+            nn.Conv3d(
+                in_channels=hidden_channels,
                 out_channels=out_channels,
                 kernel_size=1
             ),
@@ -65,8 +75,8 @@ class Encoder(nn.Module):
                 nn.Conv3d(
                     in_channels=in_channels if i==0 else hidden_channels,
                     out_channels=hidden_channels,
-                    kernel_size=(4, 4, 4),
-                    stride=(2, 2, 2),
+                    kernel_size=(3, 4, 4),
+                    stride=(2, 2, 2) if i%2==0 else (1, 2, 2),
                     padding=(1, 1, 1)
                 ),
                 nn.BatchNorm3d(hidden_channels),
@@ -110,9 +120,11 @@ class Decoder(torch.nn.Module):
                 nn.ConvTranspose3d(
                     in_channels=hidden_channels,
                     out_channels=hidden_channels,
-                    kernel_size=(4, 4, 4),
-                    stride=(2, 2, 2),
-                    padding=(1, 1, 1)),
+                   kernel_size=(3, 4, 4),
+                    stride=(1, 2, 2) if i%2==0 else (2, 2, 2),
+                    padding=(1, 1, 1),
+                    output_padding=(0, 0, 0) if i%2==0 else (1, 0, 0)
+                    ),
                 nn.BatchNorm3d(hidden_channels),
                 nn.ReLU()
             ) for i in range(nlayers-1)
@@ -121,9 +133,10 @@ class Decoder(torch.nn.Module):
         self.out_layer = nn.ConvTranspose3d(
             in_channels=hidden_channels,
             out_channels=out_channels,
-            kernel_size=(4, 4, 4),
+            kernel_size=(3, 4, 4),
             stride=(2, 2, 2),
-            padding=(1, 1, 1)
+            padding=(1, 1, 1),
+            output_padding=(1, 0, 0)
         )
 
         self.out_act = nn.Sigmoid()
@@ -248,6 +261,84 @@ class QuantizerEMA(nn.Module):
             'commitment_loss':  commitment_loss,
             'perplexity':       perplexity if self.track_codebook else torch.tensor([0.0])
         }
+    
+
+class FSQ(nn.Module):
+    def __init__(self, levels, eps=1e-3):
+        super().__init__()
+        self.register_buffer('levels', torch.tensor(levels))
+        self.register_buffer(
+            'basis',
+            torch.cumprod(torch.tensor([1] + levels[:-1]), dim=0, dtype=torch.int32)
+        )
+
+        self.eps = eps
+        self.codebook_size = torch.prod(self.levels)
+
+        self.register_buffer('implicit_codebook', self.idxs_to_code(torch.arange(self.codebook_size)))
+
+    def round_ste(self, z):
+        z_q = torch.round(z)
+        return z + (z_q - z).detach()
+
+    def quantize(self, z):
+        # half_l is used to determine how to scale tanh; we
+        # subtract 1 from the number of levels to account for 0
+        # being a quantization bin and tanh being symmetric around 0
+        half_l = (self.levels - 1) * (1 - self.eps) / 2
+
+        # if a given level is even, it will result in a scale for tanh
+        # which is halfway between integer values, so we offset
+        # the tanh output down by 0.5 to line it with whole integers
+        offset = torch.where(self.levels % 2 == 0, 0.5, 0.0)
+
+        # if our level is even, we want to shift the tanh input to
+        # ensure the 0 quantization bin is centered
+        shift = torch.tan(offset / half_l)
+
+        # once we have our shift and offset (in the case of an even level)
+        # we can round to the nearest integer bin and allow for STE
+        z_q = self.round_ste(torch.tanh(z + shift) * half_l - offset)
+
+        # after quantization, we want to renormalize the quantized
+        # values to be within the range expected by the model (ie. [-1, 1])
+        half_width = self.levels // 2
+        return z_q / half_width
+
+    def scale_and_shift(self, z_q_normalized):
+        half_width = self.levels // 2
+        return (z_q_normalized * half_width) + half_width
+
+    def scale_and_shift_inverse(self, z_q):
+        half_width = self.levels // 2
+        return (z_q - half_width) / half_width
+
+    def code_to_idxs(self, z_q):
+        z_q = self.scale_and_shift(z_q)
+        return (z_q * self.basis).sum(dim=-1).to(torch.int32)
+
+    def idxs_to_code(self, idxs):
+        idxs = idxs.unsqueeze(-1)
+        codes_not_centered = (idxs // self.basis) % self.levels
+        return self.scale_and_shift_inverse(codes_not_centered)
+
+    def forward(self, z):
+        # TODO: make this work for generic tensor sizes
+        # TODO: use einops to clean up
+        B, C, T, H, W = z.shape
+
+        # (B, C, T, H, W) -> (B, T, H, W, C)
+        z_c_last = z.permute(0, 2, 3, 4, 1).contiguous()
+        
+        # (B, T, H, W, C) -> (BTHW, C)
+        z_flatten = z_c_last.reshape(-1, C)
+        
+        z_flatten_q = self.quantize(z_flatten)
+        
+        # (BTHW, C) -> (B, T, H, W, C) -> (B, C, T, H, W)
+        z_q = z_flatten_q.reshape(B, T, H, W, C).permute(0, 4, 1, 2, 3).contiguous()
+        
+        return {'z_q': z_q}
 
 
 class VQVAE(nn.Module):
@@ -298,6 +389,54 @@ class VQVAE(nn.Module):
         z = self.encode(x)
         quantized = self.quantize(z)
         x_hat = self.decode(quantized['q_z'])
+        losses = self.loss(x_hat, x, quantized)
+
+        return {'x_hat': x_hat, **losses}
+    
+
+class FSQVAE(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.encoder = Encoder(
+            in_channels     = config.in_channels,
+            hidden_channels = config.hidden_channels,
+            out_channels    = config.latent_channels,
+            nlayers         = config.nlayers,
+            nblocks         = config.nblocks
+        )
+        self.decoder = Decoder(
+            in_channels     = config.latent_channels,
+            hidden_channels = config.hidden_channels,
+            out_channels    = config.in_channels,
+            nlayers         = config.nlayers,
+            nblocks         = config.nblocks
+        )
+        
+        self.quantizer = FSQ(config.levels)
+
+        self.config = config
+
+    def encode(self, inputs):
+        return self.encoder(inputs)
+
+    def quantize(self, z):
+        return self.quantizer(z)
+
+    def decode(self, z_q):
+        return self.decoder(z_q)
+
+    def loss(self, x_hat, x, quantized):
+        MSE = F.mse_loss(x_hat, x)
+
+        return {
+            'loss': MSE,
+            **quantized
+        }
+
+    def forward(self, x):
+        z = self.encode(x)
+        quantized = self.quantize(z)
+        x_hat = self.decode(quantized['z_q'])
         losses = self.loss(x_hat, x, quantized)
 
         return {'x_hat': x_hat, **losses}

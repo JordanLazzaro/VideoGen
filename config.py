@@ -1,3 +1,6 @@
+import math
+
+
 def get_num_downsample_layers(img_size):
     """
     Get the number of strided Conv2D layers
@@ -21,8 +24,9 @@ def build_channel_dims(start_channels, nlayers):
         start_channels *= 2
     return channels
 
-class VideoVQVAEConfig:
+class VideoVAEConfig:
     def __init__(self):
+        self.project_name = 'FSQ-VAE Steamboat Willie'
         # dataset properties
         self.paths = ['/content/drive/My Drive/SteamboatWillie/SteamboatWillie.mp4']
         self.dest_dir = './clips/'
@@ -32,11 +36,11 @@ class VideoVQVAEConfig:
         # training
         self.train_split = 0.8
         self.batch_size = 32
-        self.max_epochs = 200
+        self.max_epochs = 500
         self.training_steps = 100000
         self.num_workers = 2
         # optimizer
-        self.lr = 1.5e-4
+        self.lr = 6e-5
         self.beta1 = 0.9
         self.beta2 = 0.999
         self.weight_decay = 0.0 # 1e-2
@@ -46,17 +50,20 @@ class VideoVQVAEConfig:
         self.clip_length = 16
         self.img_size = 256
         self.in_channels = 1
-        # latents / quantization
-        self.latent_channels = 16
-        self.codebook_size = 1024
+        # quantization
+        self.quant_mode = 'fsq' # 'vq'
+        self.latent_channels = 4 # 8
+        self.codebook_size = 512
         self.commit_loss_beta = 0.25
         self.track_codebook = True
         self.use_ema = True
         self.ema_gamma = 0.99
+        self.levels = [5, 5, 5, 5] # |C| = 625
         # encoder/decoder
         self.hidden_channels = 256
+        self.start_channels = 32
         self.nblocks = 4
-        self.nlayers = 4
+        self.nlayers = 3
 
     def update(self, updates):
         for key, value in updates.items():

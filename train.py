@@ -1,17 +1,25 @@
+
+import wandb
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
 
-from .config import VideoVQVAEConfig
-from .model import VQVAE
-from .litmodel import LitVQVAE
+from .config import VideoVAEConfig
+from .model import VQVAE, FSQVAE
+from .litmodel import LitVQVAE, LitFSQVAE
 from .data.litdatamodule import SteamboatWillieDataModule
 
 
 def main():
-    config = VideoVQVAEConfig()
-    model = VQVAE(config)
-    lit_model = LitVQVAE(model, config)
+    config = VideoVAEConfig()
+
+    if config.quant_mode == 'fsq':
+        model = FSQVAE(config)
+        lit_model = LitFSQVAE(model, config)
+    elif config.quant_mode == 'vq':
+        model = VQVAE(config)
+        lit_model = LitVQVAE(model, config)
+
     steamboat_willie_data = SteamboatWillieDataModule(config)
 
     wandb.init(project=config.project_name, config=config.to_dict())
@@ -30,10 +38,11 @@ def main():
         save_last=True
     )
 
+    # Define the EarlyStopping callback
     early_stop_callback = EarlyStopping(
         monitor='val/loss',
-        min_delta=0.00,
-        patience=10,
+        min_delta=0.0000,
+        patience=15,
         verbose=True,
         check_finite=True
     )
