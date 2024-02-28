@@ -24,8 +24,8 @@ Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
 
 VideoGPT utilizes a two-model, two-stage approach
 
-## VQ-VAE (Visual Compression)
-Clips from full videos are first used to train a VQ-VAE with 3D Conv layers and axial attention
+## FSQ-VAE/VQ-VAE (Visual Compression)
+Clips from full videos are first used to train an FSQ-VAE/VQ-VAE with 3D Conv layers and (optionally) axial attention
 allowing for a compressed, discrete representation of video data
 
 ## Transformer Decoder (Visual Prediction)
