@@ -15,7 +15,7 @@ Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
 
 - [X] Part 3: VQ-VAE (Conv3D) - Steamboat Willie
 
-- [ ] Part 3.5: Finite Scalar Quantization in place of explicit codebook - normal codebook proving to be a huge pain at the moment :(
+- [X] Part 3.5: FSQ-VAE
 
 - [ ] Part 4: Transformer Decoder - latent codes from Part 3
 
@@ -27,6 +27,11 @@ VideoGPT utilizes a two-model, two-stage approach
 ## FSQ-VAE/VQ-VAE (Visual Compression)
 Clips from full videos are first used to train an FSQ-VAE/VQ-VAE with 3D Conv layers and (optionally) axial attention
 allowing for a compressed, discrete representation of video data
+
+I decided to try Finite Scalar Quantization, as I saw the paper come out around the time I 
+was thinking about this project. I then proceded to run into almost all the problems it
+mentioned with Vector Quantization, so I promptly replaced it with FSQ instead of attempting
+all the hacky workarounds proposed to mitigate the issues.
 
 ## Transformer Decoder (Visual Prediction)
 The resulting latent codebook is used as a vocabulary for a transformer decoder to learn to model sequences of
