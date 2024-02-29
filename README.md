@@ -15,7 +15,7 @@ Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
 
 - [X] Part 3: VQ-VAE (Conv3D) - Steamboat Willie
 
-- [X] Part 3.5: FSQ-VAE
+- [X] Part 3.5: FSQ-VAE (Conv3D) - Steamboat Willie
 
 - [ ] Part 4: Transformer Decoder - latent codes from Part 3
 
