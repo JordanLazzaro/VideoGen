@@ -8,7 +8,10 @@ FSQ: https://arxiv.org/abs/2309.15505
 Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
 
 ## Current Highlights
-Here are some random example clip reconstructions from the validation set for FSQ-VAE
+Best clip reconstructions from VQ-VAE before switching to FSQ:
+![](assets/wooing-infatuation-93-1.gif)
+![](assets/wooing-infatuation-93-2.gif)
+Current best clip reconstructions from FSQ-VAE:
 ![](assets/how-this-gif-half-way-through-trainings-got-me-feeling.gif)
 ![](assets/super_snowball_23_1.gif)
 ![](assets/super_snowball_23_2.gif)
