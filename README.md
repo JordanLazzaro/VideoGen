@@ -7,6 +7,12 @@ FSQ: https://arxiv.org/abs/2309.15505
 
 Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
 
+## Current Highlights
+Here are some random example clip reconstructions from the validation set for FSQ-VAE
+![Clip 1](assets/how-this-gif-half-way-through-trainings-got-me-feeling.gif)
+![Clip 2](assets/super_snowball_23_1.gif)
+![Clip 3](assets/super_snowball_23_2.gif)
+
 ## Project Roadmap
 
 - [X] Part 1: VAE (for knowledge/context) - CIFAR10
