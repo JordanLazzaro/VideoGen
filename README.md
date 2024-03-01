@@ -15,7 +15,6 @@ Best clip reconstructions from VQ-VAE before switching to FSQ:
 
 Current best clip reconstructions from FSQ-VAE:
 
-![](assets/how-this-gif-half-way-through-trainings-got-me-feeling.gif)
 ![](assets/super_snowball_23_1.gif)
 ![](assets/super_snowball_23_2.gif)
 
