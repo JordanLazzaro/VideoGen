@@ -1,10 +1,17 @@
-# VideoGPT
-Implementation of VideoGPT
+# Video Generation Model
+Heavy inspiration from the following work:
 
-https://github.com/wilson1yan/VideoGPT
+[VideoGPT](https://github.com/wilson1yan/VideoGPT)
 
-FSQ: https://arxiv.org/abs/2309.15505
+[FSQ-VAE](https://arxiv.org/abs/2309.15505)
 
+[ViViT](https://arxiv.org/pdf/2103.15691.pdf)
+
+[Sora Tech Report](https://openai.com/research/video-generation-models-as-world-simulators)
+
+[Sora Reverse Engineering](https://arxiv.org/abs/2402.17177)
+
+## Dataset Source
 Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
 
 ## Current Highlights
@@ -32,15 +39,17 @@ Current best clip reconstructions from FSQ-VAE:
 
 - [ ] Part 5: VideoGPT - put it all together
 
-
 VideoGPT utilizes a two-model, two-stage approach
 
 ## FSQ-VAE/VQ-VAE (Visual Compression)
-Clips from full videos are first used to train an FSQ-VAE/VQ-VAE with 3D Conv layers and (optionally) axial attention
-allowing for a compressed, discrete representation of video data
+Originally, I was going to compress 16-frame, full spatial dim video clips with a VAE as proposed in VideoGPT
+to produce latents for a transformer decoder to take as input. However, this is problematic due to the number of
+latent vectors that would be produced for a single clip (I want longer videos). Instead, I will use the
+spatiotemporal "tubelet" approach from ViViT to produce d-dimensional latent vectors for a spatial patch across
+a set temporal interval.
 
 I decided to try Finite Scalar Quantization, as I saw the paper come out around the time I 
-was thinking about this project. I then proceded to run into almost all the problems it
+was thinking about this project. I then proceeded to run into almost all the problems it
 mentioned with Vector Quantization, so I promptly replaced it with FSQ instead of attempting
 all the hacky workarounds proposed to mitigate the issues.
 
