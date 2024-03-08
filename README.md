@@ -11,6 +11,17 @@ Heavy inspiration from the following work:
 
 [Sora Reverse Engineering](https://arxiv.org/abs/2402.17177)
 
+## Goal
+
+Use FSQ-VAE to build a sequence of latent vectors corresponding to spatio-temporal 
+patches (described in Sora tech report) aka "tublets" (as described in ViViT paper).
+
+Sequences of latent vectors from tublets are then modeled by a Transformer Decoder, and mapped back to pixels using FSQ-VAE decoder.
+
+![](https://images.openai.com/blob/1d2955dd-9d05-4f33-b346-be531d2a7737/figure-patches.png?trim=0,0,0,0&width=2600)
+
+![](https://i.imgur.com/9G7QTfV.png)
+
 ## Dataset Source
 Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
 
