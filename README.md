@@ -67,7 +67,7 @@ Additionally, I decided to use Finite Scalar Quantization for the discretization
 features, as I ran into a lot of the problems it mentioned with Vector Quantization, and I wasn't interested in all the hacky
 or complicated workarounds proposed to mitigate its issues like random restarts, entropy regularization, etc.
 
-## Transformer Decoder (Visual Prediction)
+## Transformer Decoder (Spatio-Temporal Latent Prediction)
 The resulting spatio-temporal latent vactors are used as tokens for a transformer decoder to learn to model sequences of
 video frames in spatio-temporal latent space.
 
