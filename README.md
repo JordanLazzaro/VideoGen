@@ -74,7 +74,7 @@ video frames in spatio-temporal latent space.
 For this, I will use FlashAttention2 in conjunction with the ALiBi positional encoder to efficiently model sequences while
 being able to extrapolate to longer sequences at inference time. 
 
-## Together - VideoGPT
+## Putting Everything Together
 Once we can map spatio-temporal patches to latent space and model sequences of these latent vectors with a transformer
 decoder, we can utilize the transformer generate new latent vector sequences and map these generated latents back into
 spatio-temporal patches with the FSQ-VAE decoder.
