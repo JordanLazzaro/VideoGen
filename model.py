@@ -3,6 +3,10 @@ from torch import nn
 from torch.nn import functional as F
 
 
+##############
+# components #
+##############
+
 class ResBlock(nn.Module):
     def __init__(
             self,
@@ -60,7 +64,7 @@ class ResBlock(nn.Module):
         return self.res_act(out)
 
 
-class Encoder(nn.Module):
+class VAEEncoder(nn.Module):
     def __init__(
             self,
             in_channels,
@@ -97,7 +101,7 @@ class Encoder(nn.Module):
         return x
 
 
-class Decoder(torch.nn.Module):
+class VAEDecoder(torch.nn.Module):
     def __init__(
             self,
             in_channels,
@@ -148,8 +152,11 @@ class Decoder(torch.nn.Module):
         x = self.out_act(x)
         return x
 
+##############
+# quantizers #
+##############
 
-class QuantizerEMA(nn.Module):
+class VQEMA(nn.Module):
     def __init__(
             self,
             codebook_size,
@@ -209,20 +216,22 @@ class QuantizerEMA(nn.Module):
         else:
             return torch.tensor([0.0])
 
-    def forward(self, inputs):
-        B, C, T, H, W = inputs.shape
+    def forward(self, z):
+        assert len(z.shape) == 5, 'z.shape must equal 5'
+        
+        B, C, T, H, W = z.shape
 
         # (B, C, T, H, W) --> (B, T, H, W, C)
-        inputs_permuted = inputs.permute(0, 2, 3, 4, 1).contiguous()
+        z_permuted = z.permute(0, 2, 3, 4, 1).contiguous()
         # (B, T, H, W, C) --> (BTHW, C)
-        flat_inputs = inputs_permuted.reshape(-1, self.latent_channels)
+        flat_z = z_permuted.reshape(-1, self.latent_channels)
 
         # (BTHW, Codebook Size)
         # Σ(x-y)^2 = Σx^2 - 2xy + Σy^2
         dists = (
-            torch.sum(flat_inputs ** 2, dim=1, keepdim=True) - # Σx^2
-            2 * (flat_inputs @ self.codebook.weight.t()) +     # 2*xy
-            torch.sum(self.codebook.weight ** 2, dim=1)        # Σy^2
+            torch.sum(flat_z ** 2, dim=1, keepdim=True) - # Σx^2
+            2 * (flat_z @ self.codebook.weight.t()) +     # 2*xy
+            torch.sum(self.codebook.weight ** 2, dim=1)   # Σy^2
         )
 
         # (BTHW, 1)
@@ -230,19 +239,19 @@ class QuantizerEMA(nn.Module):
         # (BTHW, C)
         codes = self.codebook(code_idxs)
         # (BTHW, C) --> (B, T, H, W, C)
-        quantized_inputs = codes.reshape(B, T, H, W, C)
+        quantized_z = codes.reshape(B, T, H, W, C)
         # (B, T, H, W, C) --> (B, C, T, H, W)
-        quantized_inputs = quantized_inputs.permute(0, 4, 1, 2, 3).contiguous()
+        quantized_z = quantized_z.permute(0, 4, 1, 2, 3).contiguous()
 
         if self.training:
             # perform exponential moving average update for codebook
-            self.ema_update(code_idxs, flat_inputs)
+            self.ema_update(code_idxs, flat_z)
 
         # "since the volume of the embedding space is dimensionless, it can grow
         # arbitrarily if the embeddings e_i do not train as fast as the encoder
         # parameters. To make sure the encoder commits to an embedding and its
         # output does not grow, we add a commitment loss"
-        commitment_loss = F.mse_loss(quantized_inputs.detach(), inputs)
+        commitment_loss = F.mse_loss(quantized_z.detach(), z)
 
         # part 3 of full loss (ie. not including reconstruciton loss or embedding loss)
         vq_loss = commitment_loss * self.commit_loss_beta
@@ -250,13 +259,13 @@ class QuantizerEMA(nn.Module):
         # sets the output to be the input plus the residual value between the
         # quantized latents and the inputs like a resnet for Straight Through
         # Estimation (STE)
-        quantized_inputs = inputs + (quantized_inputs - inputs).detach()
+        quantized_z = z + (quantized_z - z).detach()
 
         if self.track_codebook:
             perplexity = self.calculate_perplexity(code_idxs)
 
         return {
-            'q_z':              quantized_inputs,
+            'q_z':              quantized_z,
             'vq_loss':          vq_loss,
             'commitment_loss':  commitment_loss,
             'perplexity':       perplexity if self.track_codebook else torch.tensor([0.0])
@@ -325,6 +334,8 @@ class FSQ(nn.Module):
     def forward(self, z):
         # TODO: make this work for generic tensor sizes
         # TODO: use einops to clean up
+        assert len(z.shape) == 5, 'z.shape must equal 5'
+        
         B, C, T, H, W = z.shape
 
         # (B, C, T, H, W) -> (B, T, H, W, C)
@@ -344,21 +355,21 @@ class FSQ(nn.Module):
 class VQVAE(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.encoder = Encoder(
+        self.encoder = VAEEncoder(
             in_channels     = config.in_channels,
             hidden_channels = config.hidden_channels,
             out_channels    = config.latent_channels,
             nlayers         = config.nlayers,
             nblocks         = config.nblocks
         )
-        self.decoder = Decoder(
+        self.decoder = VAEDecoder(
             in_channels     = config.latent_channels,
             hidden_channels = config.hidden_channels,
             out_channels    = config.in_channels,
             nlayers         = config.nlayers,
             nblocks         = config.nblocks
         )
-        self.quantizer = QuantizerEMA(
+        self.quantizer = VQEMA(
             codebook_size    = config.codebook_size,
             latent_channels  = config.latent_channels,
             ema_gamma        = config.ema_gamma,
@@ -397,14 +408,14 @@ class VQVAE(nn.Module):
 class FSQVAE(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.encoder = Encoder(
+        self.encoder = VAEEncoder(
             in_channels     = config.in_channels,
             hidden_channels = config.hidden_channels,
             out_channels    = config.latent_channels,
             nlayers         = config.nlayers,
             nblocks         = config.nblocks
         )
-        self.decoder = Decoder(
+        self.decoder = VAEDecoder(
             in_channels     = config.latent_channels,
             hidden_channels = config.hidden_channels,
             out_channels    = config.in_channels,
@@ -440,3 +451,82 @@ class FSQVAE(nn.Module):
         losses = self.loss(x_hat, x, quantized)
 
         return {'x_hat': x_hat, **losses}
+    
+
+class TubeletFSQVAE(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.encoder = VAEEncoder(
+            in_channels     = config.in_channels,
+            hidden_channels = config.hidden_channels,
+            out_channels    = config.latent_channels,
+            nlayers         = config.nlayers,
+            nblocks         = config.nblocks
+        )
+        self.decoder = VAEDecoder(
+            in_channels     = config.latent_channels,
+            hidden_channels = config.hidden_channels,
+            out_channels    = config.in_channels,
+            nlayers         = config.nlayers,
+            nblocks         = config.nblocks
+        )
+        
+        self.quantizer = FSQ(config.levels)
+
+        self.config = config
+
+    def encode(self, inputs):
+        return self.encoder(inputs)
+
+    def quantize(self, z):
+        return self.quantizer(z)
+
+    def decode(self, z_q):
+        return self.decoder(z_q)
+
+    def loss(self, x_hat, x, quantized):
+        MSE = F.mse_loss(x_hat, x)
+
+        return {
+            'loss': MSE,
+            **quantized
+        }
+
+    def forward(self, x):
+        z = self.encode(x)
+        quantized = self.quantize(z)
+        x_hat = self.decode(quantized['z_q'])
+        losses = self.loss(x_hat, x, quantized)
+
+        return {'x_hat': x_hat, **losses}
+
+
+#########
+# utils #
+#########
+    
+
+def extract_tubelets(x, t=8, p=16):
+    '''
+    extract tubelet sequence of shape ((B * n_t * n_h * n_w), C, t, p, p)
+    from a video tensor of shape (B, C, T, H, W)
+    where n_t = T // t, n_h = H // p, and n_w = W // p
+    '''
+    assert len(x.shape) == 5, 'x.shape must be (B, C, T, H, W)'
+    
+    B, C, T, H, W = x.shape
+
+    assert T % t == 0, 't must divide T (vid.shape[2]) evenly'
+    assert H % p == 0, 'p must divide H (vid.shape[3]) evenly'
+    assert W % p == 0, 'p must divide W (vid.shape[4]) evenly'
+
+    n_t, n_h, n_w = T // t, H // p, W // p
+    
+    # (B, C, T, H, W) -> (B, C, n_t, t, n_h, p, n_w, p)
+    x = x.reshape(B, C, n_t, t, n_h, p, n_w, p)
+    # (B, C, n_t, t, n_h, p, n_w, p) -> (B, n_t, n_h, n_w, C, t, p, p)
+    x = x.permute(0, 2, 4, 6, 1, 3, 5, 7).contiguous()
+    # (B, n_t, n_h, n_w, C, t, p, p) -> ((B * n_t * n_h * n_w), C, t, p, p)
+    x = x.reshape(-1, C, t, p, p)
+
+    return x
