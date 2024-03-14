@@ -39,9 +39,9 @@ Clip reconstructions from roadmap steps 3 and 4
 ![](assets/super_snowball_23_1.gif)
 ![](assets/super_snowball_23_2.gif)
 
-*current best tubelet reconstructions from FSQ-VAE*:
-![](assets/maple_mousse_23_1.gif)
-![](assets/maple_mousse_23_2.gif)
+*current best tubelet reconstructions from FSQ-VAE (rearranged back into clip)*:
+![](assets/maple_mousse_23_1.GIF)
+![](assets/maple_mousse_23_2.GIF)
 
 
 ## Project Roadmap
