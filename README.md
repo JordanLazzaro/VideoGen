@@ -29,15 +29,21 @@ Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
 ## Current Highlights
 Clip reconstructions from roadmap steps 3 and 4
 
-*Best clip reconstructions from VQ-VAE before switching to FSQ*:
+*best 16-frame, full spatial dimension reconstructions from VQ-VAE before switching to FSQ*:
 
 ![](assets/wooing-infatuation-93-1.gif)
 ![](assets/wooing-infatuation-93-2.gif)
 
-*Current best clip reconstructions from FSQ-VAE*:
+*best 16-frame, full spatial dimension reconstructions reconstructions from FSQ-VAE*:
 
 ![](assets/super_snowball_23_1.gif)
 ![](assets/super_snowball_23_2.gif)
+
+*current best tubelet reconstructions from FSQ-VAE (rearranged back into clip)*:
+
+![](assets/maple_mousse_23_1.GIF)
+![](assets/maple_mousse_23_2.GIF)
+
 
 ## Project Roadmap
 
