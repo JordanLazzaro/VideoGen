@@ -41,8 +41,8 @@ Clip reconstructions from roadmap steps 3 and 4
 
 *current best tubelet reconstructions from FSQ-VAE (rearranged back into clip)*:
 
-![](assets/eternal_dream_59_1.gif)
-![](assets/eternal_dream_59_2.gif)
+![](assets/proud_snowflake_68_1.gif)
+![](assets/proud_snowflake_68_2.gif)
 
 
 ## Project Roadmap
