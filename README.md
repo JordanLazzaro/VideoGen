@@ -55,7 +55,7 @@ Clip reconstructions from roadmap steps 3 and 4
 
 - [X] Part 3.5: FSQ-VAE (Conv3D) - Steamboat Willie
 
-- [ ] Part 4: Tubelet FSQ-VAE (Conv3d) - Steamboat Willie
+- [X] Part 4: Tubelet FSQ-VAE (Conv3d) - Steamboat Willie
 
 - [ ] Part 5: Transformer Decoder - model sequences of tublet latent vectors from Part 4
 
