@@ -57,7 +57,7 @@ Clip reconstructions from roadmap steps 3 and 4
 
 - [X] Part 4: Tubelet FSQ-VAE (Conv3d) - Steamboat Willie
 
-- [ ] Part 4.5: Build auxiliary dataset of pre-encoded clips using FSQ-VAE encoder + quantizer
+- [X] Part 4.5: Build auxiliary dataset of pre-encoded clips using FSQ-VAE encoder + quantizer
 
 - [ ] Part 5: Transformer Decoder - model sequences of tublet latent vectors from Part 4
 
