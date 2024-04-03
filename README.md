@@ -59,7 +59,7 @@ Clip reconstructions from roadmap steps 3 and 4
 
 - [X] Part 4.5: Build auxiliary dataset of pre-encoded clips using FSQ-VAE encoder + quantizer
 
-- [ ] Part 5: Transformer Decoder - model sequences of tublet latent vectors from Part 4
+- [X] Part 5: Transformer Decoder - model sequences of tublet latent vectors from Part 4
 
 - [ ] Part 5: Video Generation - put it all together
 
@@ -80,7 +80,9 @@ The resulting spatio-temporal latent vactors are used as tokens for a transforme
 video frames in spatio-temporal latent space.
 
 For this, I will use FlashAttention2 in conjunction with the ALiBi positional encoder to efficiently model sequences while
-being able to extrapolate to longer sequences at inference time. 
+being able to extrapolate to longer sequences at inference time.
+
+Right now, it's looking like I'm really going to be counting on ALiBi's 'test long' promise, as I can only fit a context of 4098 in memory, which is 1/4 of a clip. Also, I'm projecting the latent dim up due to it being tiny (5 elements), and using a huge fan_in for the MLP. I'm also using more layers than I was expecting, but I need more params, and more layers = better right?.
 
 ## Putting Everything Together
 Once we can map spatio-temporal patches to latent space and model sequences of these latent vectors with a transformer
