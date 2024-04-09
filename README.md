@@ -1,4 +1,6 @@
 # Video Generation Model
+**UPDATE** This current approach is seeming to not work as well as anticipated, so I'm going back to the drawing board 
+
 Heavy inspiration from the following work:
 
 [VideoGPT](https://github.com/wilson1yan/VideoGPT)
@@ -24,8 +26,6 @@ Heavy inspiration from the following work:
 
 **These sequences of latent vectors are then modeled by a Transformer Decoder, and subsequently mapped back
 to spatio-temporal patches using FSQ-VAE decoder.**
-
-**UPDATE** This current approach is seeming to not work as well as anticipated, so I'm going back to the drawing board 
 
 ![](https://images.openai.com/blob/1d2955dd-9d05-4f33-b346-be531d2a7737/figure-patches.png?trim=0,0,0,0&width=2600)
 
@@ -73,7 +73,7 @@ Clip reconstructions from roadmap steps 3 and 4
 
 - [X] Part 5: Transformer Decoder - model sequences of tublet latent vectors from Part 4
 
-- [ ] Part 5: Video Generation - put it all together
+- [X] Part 5: Video Generation - put it all together
 
 ## Tubelet FSQ-VAE/VQ-VAE (Spatio-Temporal Patch Compression)
 Originally, my idea was to compress 16-frame, full spatial dim video clips with a VAE as proposed in VideoGPT
