@@ -11,6 +11,12 @@ Heavy inspiration from the following work:
 
 [Sora Reverse Engineering](https://arxiv.org/abs/2402.17177)
 
+[VideoPoet](https://research.google/blog/videopoet-a-large-language-model-for-zero-shot-video-generation/)
+
+[MAGVIT](https://arxiv.org/abs/2212.05199)
+
+[MAGVIT-V2](https://magvit.cs.cmu.edu/v2/)
+
 ## Goal
 
 **Use FSQ-VAE encoder to build a sequence of latent vectors representing spatio-temporal patches
@@ -18,6 +24,8 @@ Heavy inspiration from the following work:
 
 **These sequences of latent vectors are then modeled by a Transformer Decoder, and subsequently mapped back
 to spatio-temporal patches using FSQ-VAE decoder.**
+
+**UPDATE** This current approach is seeming to not work as well as anticipated, so I'm going back to the drawing board 
 
 ![](https://images.openai.com/blob/1d2955dd-9d05-4f33-b346-be531d2a7737/figure-patches.png?trim=0,0,0,0&width=2600)
 
@@ -43,6 +51,10 @@ Clip reconstructions from roadmap steps 3 and 4
 
 ![](assets/pious_firefly_98_1.gif)
 ![](assets/pious_firefly_98_2.gif)
+
+*Dead End?*
+
+![](assets/bad_generation.mp4)
 
 
 ## Project Roadmap
