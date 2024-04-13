@@ -1,5 +1,4 @@
-# Video Generation Model
-**UPDATE** This current approach is seeming to not work as well as anticipated, so I'm going back to the drawing board 
+# Autoregressive Video Generation Model
 
 Heavy inspiration from the following work:
 
@@ -7,29 +6,17 @@ Heavy inspiration from the following work:
 
 [FSQ-VAE](https://arxiv.org/abs/2309.15505)
 
-[ViViT](https://arxiv.org/pdf/2103.15691.pdf)
-
-[Sora Tech Report](https://openai.com/research/video-generation-models-as-world-simulators)
-
-[Sora Reverse Engineering](https://arxiv.org/abs/2402.17177)
-
-[VideoPoet](https://research.google/blog/videopoet-a-large-language-model-for-zero-shot-video-generation/)
-
 [MAGVIT](https://arxiv.org/abs/2212.05199)
 
 [MAGVIT-V2](https://magvit.cs.cmu.edu/v2/)
 
+[VideoPoet](https://research.google/blog/videopoet-a-large-language-model-for-zero-shot-video-generation/)
+
 ## Goal
 
-**Use FSQ-VAE encoder to build a sequence of latent vectors representing spatio-temporal patches
-("spacetime patches" in Sora tech report / "tublets" in ViViT paper) from the video frames in the input context.**
+**Build MAGVIT2 visual tokenizer (using FSQ in place of LFQ) and use it to tokenize Steamboat Willie so it can be modeled by a transformer sequence model**
 
-**These sequences of latent vectors are then modeled by a Transformer Decoder, and subsequently mapped back
-to spatio-temporal patches using FSQ-VAE decoder.**
-
-![](https://images.openai.com/blob/1d2955dd-9d05-4f33-b346-be531d2a7737/figure-patches.png?trim=0,0,0,0&width=2600)
-
-![](https://i.imgur.com/9G7QTfV.png)
+![](https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgxFblHaHRJNH7Oi2_oOTosGN9XrjgjhWmnfADchMT8WR0XAo6SxiUfpUmn5R6akciiRduaKIMdgwHZzK3xW8mErarQ_ugx41ctQAMK08O9UMVevgkk-AgFI1xYFWAomd16OcOh0R-XpyZVLQXncpk2SHf-RmPzrqBbIWZc-nUG2TH6nC2R7qyHXn8eTC-u/s2680/image21.png)
 
 ## Dataset Source
 Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
@@ -52,51 +39,25 @@ Clip reconstructions from roadmap steps 3 and 4
 ![](assets/pious_firefly_98_1.gif)
 ![](assets/pious_firefly_98_2.gif)
 
-*Dead End?*
-
-![](assets/bad_generation.mp4)
+*Better clips coming with updated approach*
 
 
 ## Project Roadmap
 
-- [X] Part 1: VAE (for knowledge/context) - CIFAR10
+- [ ] Implement MAGVIT-V2 tokenizer
+    - [ ] Dialated Causal Convolution (in time dim)
+    - [ ] Blur Pool
+    - [ ] FSQ-VAE
+    - [ ] Descriminator / GAN Loss
+- [ ] Implement the Transformer Decoder
+- [ ] Implement the Super Resolution model
+- [ ] Incorporate audio (extra credit)
 
-- [X] Part 2: VQ-VAE/VQ-VAE 2 (Conv2D) - CIFAR10
-
-- [X] Part 3: VQ-VAE (Conv3D) - Steamboat Willie
-
-- [X] Part 3.5: FSQ-VAE (Conv3D) - Steamboat Willie
-
-- [X] Part 4: Tubelet FSQ-VAE (Conv3d) - Steamboat Willie
-
-- [X] Part 4.5: Build auxiliary dataset of pre-encoded clips using FSQ-VAE encoder + quantizer
-
-- [X] Part 5: Transformer Decoder - model sequences of tublet latent vectors from Part 4
-
-- [X] Part 5: Video Generation - put it all together
-
-## Tubelet FSQ-VAE/VQ-VAE (Spatio-Temporal Patch Compression)
-Originally, my idea was to compress 16-frame, full spatial dim video clips with a VAE as proposed in VideoGPT
-to produce latent sequences for a transformer decoder to model. However, this approach is problematic due to the
-number of latent vectors that would be produced for a single clip (I want to model longer videos). Instead, I am taking
-inspiration from the "spacetime patches" approach from the Sora tech report, which is similar to "tubelets"
-in ViViT. The goal is to utilize an FSQ-VAE to produce a sequence of d-dimensional latent vectors as shown in the
-tubelet figure above, which can be both modeled by a transformer decoder and mapped back to pixel space by the FSQ-VAE decoder.
-
-Additionally, I decided to use Finite Scalar Quantization for the discretization step in the VAE used to produce latent visual
-features, as I ran into a lot of the problems it mentioned with Vector Quantization, and I wasn't interested in all the hacky
-or complicated workarounds proposed to mitigate its issues like random restarts, entropy regularization, etc.
+## MAGVIT2
+This is a VQVAE-style setup which adds a GAN loss to the reconstruction loss. The paper uses Lookup-Free Quantization, but I would like to try Finite Scalar Quantization since it seems to do well in other implementations of MAGVIT2 (and I've already implemented it)
 
 ## Transformer Decoder (Spatio-Temporal Latent Prediction)
-The resulting spatio-temporal latent vactors are used as tokens for a transformer decoder to learn to model sequences of
-video frames in spatio-temporal latent space.
+For this, I will use FlashAttention2 in conjunction with the ALiBi positional encoder to efficiently model sequences while being able to extrapolate to longer sequences at inference time.
 
-For this, I will use FlashAttention2 in conjunction with the ALiBi positional encoder to efficiently model sequences while
-being able to extrapolate to longer sequences at inference time.
-
-Right now, it's looking like I'm really going to be counting on ALiBi's 'test long' promise, as I can only fit a context of 4098 in memory, which is 1/4 of a clip. Also, I'm projecting the latent dim up due to it being tiny (5 elements), and using a huge fan_in for the MLP. I'm also using more layers than I was expecting, but I need more params, and more layers = better right?.
-
-## Putting Everything Together
-Once we can map spatio-temporal patches to latent space and model sequences of these latent vectors with a transformer
-decoder, we can utilize the transformer generate new latent vector sequences and map these generated latents back into
-spatio-temporal patches with the FSQ-VAE decoder.
+## Super Resolution
+After we've mapped our generated sequence back into a 128 x 128 video, we can upsample the video frames to 256x256 (or maybe even 512 x 512?) to ensure our generated clip is tractable to learn and compute.
