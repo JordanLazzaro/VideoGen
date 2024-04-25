@@ -45,10 +45,11 @@ Clip reconstructions from roadmap steps 3 and 4
 ## Project Roadmap
 
 - [ ] Implement MAGVIT-V2 tokenizer
-    - [ ] Dialated Causal Convolution (in time dim)
-    - [ ] Blur Pool
-    - [ ] FSQ-VAE
-    - [ ] Descriminator / GAN Loss
+    - [X] Dialated Causal Convolution (in time dim)
+    - [X] Blur Pool
+    - [X] FSQ-VAE
+    - [X] Descriminator
+    - [ ] GAN Loss
 - [ ] Implement the Transformer Decoder
 - [ ] Implement the Super Resolution model
 - [ ] Incorporate audio (extra credit)
