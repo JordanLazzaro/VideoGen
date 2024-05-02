@@ -49,7 +49,8 @@ Clip reconstructions from roadmap steps 3 and 4
     - [X] Blur Pool
     - [X] FSQ-VAE
     - [X] Descriminator
-    - [ ] GAN Loss
+    - [X] GAN Loss
+    - [ ] Perceptual Loss
 - [ ] Implement the Transformer Decoder
 - [ ] Implement the Super Resolution model
 - [ ] Incorporate audio (extra credit)
