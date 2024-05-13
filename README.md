@@ -4,7 +4,7 @@ Heavy inspiration from the following work:
 
 [VideoGPT](https://github.com/wilson1yan/VideoGPT)
 
-[FSQ-VAE](https://arxiv.org/abs/2309.15505)
+[FSQ](https://arxiv.org/abs/2309.15505)
 
 [MAGVIT](https://arxiv.org/abs/2212.05199)
 
@@ -13,36 +13,62 @@ Heavy inspiration from the following work:
 [VideoPoet](https://research.google/blog/videopoet-a-large-language-model-for-zero-shot-video-generation/)
 
 ## Goal
+**Build a video generation model which can generate novel scenes form Steamboat Willie**
 
-**Build MAGVIT2 visual tokenizer (using FSQ in place of LFQ) and use it to tokenize Steamboat Willie so it can be modeled by a transformer sequence model**
+This project was initially started because I had a naive idea for how I would build a video generation
+model despite having never actually implemented even a vanilla VAE before. I had a high-level theoretical 
+understanding of how VAEs worked, so I knew I could use one to learn good latent features of frames which could 
+be fed into a transformer decoder for sequence modeling to get videos. After some digging, I found VideoGPT 
+from 2021, which seemed to be the first video generation model to work in this way, so I knew my intial idea 
+wasn't totally off from what the research community initially tried.
 
-![](https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgxFblHaHRJNH7Oi2_oOTosGN9XrjgjhWmnfADchMT8WR0XAo6SxiUfpUmn5R6akciiRduaKIMdgwHZzK3xW8mErarQ_ugx41ctQAMK08O9UMVevgkk-AgFI1xYFWAomd16OcOh0R-XpyZVLQXncpk2SHf-RmPzrqBbIWZc-nUG2TH6nC2R7qyHXn8eTC-u/s2680/image21.png)
+To familiarize myself with how to actually get VAEs to work well in practice, I implemented a VAE, VQ-VAE, and 
+VQ-VAE-2 on CIFAR-10. I then modified the VQ-VAE from before to work with video clips to train it on 
+Steamboat Willie. 
 
-## Dataset Source
-Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
-
-## Current Highlights
-Clip reconstructions from roadmap steps 3 and 4
-
-*best 16-frame, full spatial dimension reconstructions from VQ-VAE before switching to FSQ*:
+*best 16-frame, full spatial dimension reconstructions from VQ-VAE*:
 
 ![](assets/wooing-infatuation-93-1.gif)
 ![](assets/wooing-infatuation-93-2.gif)
+
+I had some trouble with the VideoClips PyTorch tool taking too long to load clips, so I 
+preprocessed the video clips and stored them as binary files for faster reads. While working on the VQ-VAE, I 
+discovered Finite Scalar Quantization (FSQ) and liked the idea of it simplifying the whole quantization process 
+and alleviating a lot of the training issues common in standard VQ-VAEs. I implemented it and used it in the now
+FSQ-VAE, and trained that on the Steamboat Willie clips.
 
 *best 16-frame, full spatial dimension reconstructions reconstructions from FSQ-VAE*:
 
 ![](assets/super_snowball_23_1.gif)
 ![](assets/super_snowball_23_2.gif)
 
+Having seen the recently released Sora tech report from OpenAI, I liked the idea of operating on spatio-temporal
+patches of the video, as it allowed for the model to handle variably shaped videos more easily. I could 
+reassemble the patches back into into video clips and get the full reconstructed clips back.
+
 *current best tubelet reconstructions from FSQ-VAE (rearranged back into clip)*:
 
 ![](assets/pious_firefly_98_1.gif)
 ![](assets/pious_firefly_98_2.gif)
 
-*Better clips coming with updated approach*
+After finally getting some acceptable looking recontructions, I fed the sequence of quantized encodings directly
+into a transformer decoder which used FlashAttention2 with Sliding Window Attention along with ALiBi positional
+encodings so I had the option of extending to longer sequences at inference time. This is where I found out I 
+goofed up big time. The FSQ-VAE was simply not good enough at compressing the video clips, and the resulting
+sequence was way too long. My transformer was also to small to generate coherent clips, and it quickly turned
+into nonsense.
 
+It was around this time I was recommended to check out VideoPoet from Google, which is the current
+state of the art in autoregressive video generation. This model uses a video tokenizer called MAGVIT-v2, which is
+the current state of the art video tokenizer. So now, I have switched my approach to use this new MAGVIT-v2 
+video tokenizer to get short video token sequences, and am in the process of getting it to train effectively.
 
-## Project Roadmap
+Stay tuned for more updates!
+
+## Dataset Source
+Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
+
+## Current Project Roadmap
 
 - [ ] Implement MAGVIT-V2 tokenizer
     - [X] Dialated Causal Convolution (in time dim)
@@ -50,13 +76,12 @@ Clip reconstructions from roadmap steps 3 and 4
     - [X] FSQ-VAE
     - [X] Descriminator
     - [X] GAN Loss
-    - [ ] Perceptual Loss
 - [ ] Implement the Transformer Decoder
 - [ ] Implement the Super Resolution model
 - [ ] Incorporate audio (extra credit)
 
 ## MAGVIT2
-This is a VQVAE-style setup which adds a GAN loss to the reconstruction loss. The paper uses Lookup-Free Quantization, but I would like to try Finite Scalar Quantization since it seems to do well in other implementations of MAGVIT2 (and I've already implemented it)
+This is a VQGAN style setup which uses a GAN loss to augment the FSQ-VAE reconstruction loss. The paper uses Lookup-Free Quantization, but I would like to try Finite Scalar Quantization since it seems to do well in other implementations of MAGVIT2 (and I've already implemented it)
 
 ## Transformer Decoder (Spatio-Temporal Latent Prediction)
 For this, I will use FlashAttention2 in conjunction with the ALiBi positional encoder to efficiently model sequences while being able to extrapolate to longer sequences at inference time.
