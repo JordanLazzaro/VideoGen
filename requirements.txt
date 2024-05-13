@@ -1,9 +1,0 @@
-torch
-torchvision
-tqdm
-numpy
-wandb
-pytorch_lightning
-av
-imageio
-matplotlib
