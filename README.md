@@ -73,10 +73,22 @@ Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
 - [ ] Implement MAGVIT-V2 tokenizer
     - [X] Dialated Causal Convolution (in time dim)
     - [X] Blur Pool
+    - [X] FSQ
+    - [X] Encoder
+    - [X] Decoder
     - [X] FSQ-VAE
     - [X] Descriminator
+        - [X] grad penalty
     - [X] GAN Loss
-- [ ] Implement the Transformer Decoder
+    - [X] Delay GAN loss
+    - [X] Replace GAN loss with hinge loss
+    - [X] make Generator loss non-saturating
+    - [ ] add LeCAM Regularization
+    - [X] adjust discriminator to accept patches
+      - [X] separate time downsample and space downsample
+    - [ ] add more capacity to FSQ-VAE
+    - [ ] increase vocabulary (level 9 -> 11)
+- [X] Implement the Transformer Decoder
 - [ ] Implement the Super Resolution model
 - [ ] Incorporate audio (extra credit)
 
