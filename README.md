@@ -86,8 +86,9 @@ Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
     - [ ] add LeCAM Regularization
     - [X] adjust discriminator to accept patches
       - [X] separate time downsample and space downsample
-    - [ ] add more capacity to FSQ-VAE
-    - [ ] increase vocabulary (level 9 -> 11)
+    - [X] add more capacity to FSQ-VAE
+    - [X] increase vocabulary (level 9 -> 11)
+    - [ ] increase disc start channels and cap at paper value
 - [X] Implement the Transformer Decoder
 - [ ] Implement the Super Resolution model
 - [ ] Incorporate audio (extra credit)
