@@ -93,7 +93,7 @@ Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
 - [ ] Incorporate audio (extra credit)
 
 ## MAGVIT2
-This is a VQGAN style setup which uses a GAN loss to augment the FSQ-VAE reconstruction loss. The paper uses Lookup-Free Quantization, but I would like to try Finite Scalar Quantization since it seems to do well in other implementations of MAGVIT2 (and I've already implemented it)
+This is a VQGAN style setup which uses a GAN loss to augment the FSQ-VAE reconstruction loss. The paper uses Lookup-Free Quantization, but I used Finite Scalar Quantization since it seems to do well in other implementations of MAGVIT2 (and I've already implemented it)
 
 ## Transformer Decoder (Spatio-Temporal Latent Prediction)
 For this, I will use FlashAttention2 in conjunction with the ALiBi positional encoder to efficiently model sequences while being able to extrapolate to longer sequences at inference time.
