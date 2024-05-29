@@ -88,10 +88,14 @@ Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
       - [X] separate time downsample and space downsample
     - [X] add more capacity to FSQ-VAE
     - [X] increase vocabulary (level 9 -> 11)
-    - [ ] increase disc start channels and cap at paper value
+    - [X] increase disc start channels and cap at paper value
+    - [X] first disc delay for training disc, secondary disc delay for gen loss
+    - [X] increase vae channels
+    - [X] replace calculated channel increase with multipliers (for disc, enc, and dec)
+    - [X] log real and fake logits
 - [X] Implement the Transformer Decoder
 - [ ] Implement the Super Resolution model
-- [ ] Incorporate audio (extra credit)
+- [ ] Incorporate audio (optional/if feasible)
 
 ## MAGVIT2
 
