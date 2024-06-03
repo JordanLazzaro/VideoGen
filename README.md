@@ -26,7 +26,7 @@ To familiarize myself with how to actually get VAEs to work well in practice, I 
 VQ-VAE-2 on CIFAR-10. I then modified the VQ-VAE from before to work with video clips to train it on 
 Steamboat Willie. 
 
-*best 16-frame, full spatial dimension reconstructions from VQ-VAE*:
+*best 16-frame, full spatial dimension reconstructions from VQ-VAE (without any codebook tricks)*:
 
 ![](assets/wooing-infatuation-93-1.gif)
 ![](assets/wooing-infatuation-93-2.gif)
