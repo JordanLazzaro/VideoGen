@@ -105,8 +105,8 @@ This is a VQGAN style setup that uses a GAN loss to augment the FSQ-VAE reconstr
 it seemed to do well in other implementations of MAGVIT2 (and I've already implemented it). I have also been experimenting with Discriminators which take PatchGAN-style patches 
 and spatiotemporal patches.
 
-## Transformer Decoder (Spatio-Temporal Latent Prediction)
+## Transformer Latent Sequence Model
 For this, I will use FlashAttention2 in conjunction with the ALiBi positional encoder to efficiently model sequences while being able to extrapolate to longer sequences at inference time.
 
-## Super Resolution
+## Super Resolution Model
 After we've mapped our generated sequence back into a 128 x 128 video, we can upsample the video frames to 256x256 (or maybe even 512 x 512?) to ensure our generated clip is tractable to learn and compute.
