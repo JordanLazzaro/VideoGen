@@ -1,16 +1,6 @@
 # Autoregressive Video Generation Model
 
-Heavy inspiration from the following work:
-
-[VideoGPT](https://github.com/wilson1yan/VideoGPT)
-
-[FSQ](https://arxiv.org/abs/2309.15505)
-
-[MAGVIT](https://arxiv.org/abs/2212.05199)
-
-[MAGVIT-V2](https://magvit.cs.cmu.edu/v2/)
-
-[VideoPoet](https://research.google/blog/videopoet-a-large-language-model-for-zero-shot-video-generation/)
+NOTE: [MAGVIT2](notebooks/MAGVIT2.ipynb) is the notebook currently being worked on.
 
 ## Goal
 **Build a video generation model which can generate novel scenes from Steamboat Willie**
@@ -68,35 +58,6 @@ Stay tuned for more updates!
 ## Dataset Source
 Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
 
-## Current Project Roadmap
-
-- [ ] Implement MAGVIT-V2 tokenizer
-    - [X] Dialated Causal Convolution (in time dim)
-    - [X] Blur Pool
-    - [X] FSQ
-    - [X] Encoder
-    - [X] Decoder
-    - [X] FSQ-VAE
-    - [X] Discriminator
-        - [X] grad penalty
-    - [X] GAN Loss
-    - [X] Delay GAN loss
-    - [X] Replace GAN loss with hinge loss
-    - [X] make Generator loss non-saturating
-    - [ ] add LeCAM Regularization
-    - [X] adjust discriminator to accept patches
-      - [X] separate time downsample and space downsample
-    - [X] add more capacity to FSQ-VAE
-    - [X] increase vocabulary (level 9 -> 11)
-    - [X] increase disc start channels and cap at paper value
-    - [X] first disc delay for training disc, secondary disc delay for gen loss
-    - [X] increase vae channels
-    - [X] replace calculated channel increase with multipliers (for disc, enc, and dec)
-    - [X] log real and fake logits
-- [X] Implement the Transformer Decoder
-- [ ] Implement the Super Resolution model
-- [ ] Incorporate audio (optional/if feasible)
-
 ## MAGVIT2
 
 ![](assets/magvit2-arch-diagram.png)
@@ -110,3 +71,15 @@ For this, I will use FlashAttention2 in conjunction with the ALiBi positional en
 
 ## Super Resolution Model
 After we've mapped our generated sequence back into a 128 x 128 video, we can upsample the video frames to 256x256 (or maybe even 512 x 512?) to ensure our generated clip is tractable to learn and compute.
+
+Heavy use/inspiration from the following work:
+
+[VideoGPT](https://github.com/wilson1yan/VideoGPT)
+
+[FSQ](https://arxiv.org/abs/2309.15505)
+
+[MAGVIT](https://arxiv.org/abs/2212.05199)
+
+[MAGVIT-V2](https://magvit.cs.cmu.edu/v2/)
+
+[VideoPoet](https://research.google/blog/videopoet-a-large-language-model-for-zero-shot-video-generation/)
