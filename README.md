@@ -53,7 +53,10 @@ state of the art in autoregressive video generation. This model uses a video tok
 the current state-of-the-art video tokenizer. So now, I have switched my approach to use this new MAGVIT-v2 
 video tokenizer to get short video token sequences, and I am in the process of getting it to train effectively.
 
-Stay tuned for more updates!
+*16-frame 128x128 resolution reconstructions prior to proper adversarial loss*
+
+![](assets/magvit2-before-gan-loss-1.gif)
+![](assets/magvit2-before-gan-loss-2.gif)
 
 ## Dataset Source
 Steamboat Willie source: https://archive.org/download/steamboat-willie-mickey
