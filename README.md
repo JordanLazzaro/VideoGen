@@ -1,4 +1,4 @@
-# Autoregressive Video Generation Model
+# Video Generation
 
 NOTE: [MAGVIT2](notebooks/MAGVIT2.ipynb) is the notebook currently being worked on.
 
@@ -70,7 +70,8 @@ it seemed to do well in other implementations of MAGVIT2 (and I've already imple
 and spatiotemporal patches.
 
 ## Transformer Latent Sequence Model
-For this, I will use FlashAttention2 in conjunction with the ALiBi positional encoder to efficiently model sequences while being able to extrapolate to longer sequences at inference time.
+For this, I will use FlashAttention2 in conjunction with the ALiBi positional encoder to efficiently model sequences while being able to extrapolate to longer sequences at inference time. I'm interested in both
+Autoregressive generation and using iterative masked decoding methods like MaskGIT.
 
 ## Super Resolution Model
 After we've mapped our generated sequence back into a 128 x 128 video, we can upsample the video frames to 256x256 (or maybe even 512 x 512?) to ensure our generated clip is tractable to learn and compute.
