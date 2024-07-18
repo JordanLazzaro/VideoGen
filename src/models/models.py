@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from itertools import zip_longest
-from einops import rearrange, repeat
+from einops import rearrange
 from torch.autograd import grad as torch_grad
 from torch.nn import functional as F
 
