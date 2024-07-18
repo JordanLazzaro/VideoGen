@@ -1,0 +1,71 @@
+project:
+  magvit2:
+    name: SteamboatWillie MAGVIT2
+    wandb_project: SteamboatWillie MAGVIT2
+
+data:
+  paths: 
+    - /content/drive/My Drive/SteamboatWillie/SteamboatWillie.mp4
+  clip_length: 16
+  img_size: 256
+  clip_dest_dir: ./clips
+  num_workers: 4
+
+magvit2:
+  fsqvae:
+    encoder:
+      in_channels: 1
+      out_channels: 5
+      init_channels: 64
+      channel_multipliers: [1, 2, 2, 4]
+      num_downsamples: 3
+      num_space_downsamples: 3
+      num_time_downsamples: 2
+      nblocks: 1
+    fsq:
+      levels: [11, 11, 11, 11, 11]
+    decoder:
+      in_channels: 5
+      out_channels: 1
+      init_channels: 64
+      channel_multipliers: [1, 2, 2, 4]
+      num_upsamples: 3
+      num_space_upsamples: 3
+      num_time_upsamples: 2
+      nblocks: 1
+  discriminator:
+    num_patches: 64
+    num_tubelets: 16
+    num_frames: 128
+    in_channels: 1
+    out_channels: 1
+    init_channels: 128
+    channel_multipliers: [1, 4, 4, 4, 4, 4]
+    num_space_downsamples: 5
+    num_time_downsamples: 2
+    disc_loss_delay_epochs: 0
+    gen_loss_delay_epochs: 0
+    disc_type: patch
+    recon_loss_type: mse
+  lecam_ema_init: 0.0
+  lecam_decay: 0.999
+  lecam_loss_weight: 0.001
+  gen_loss_weight: 0.01
+  disc_loss_weight: 1.0
+  recon_loss_weight: 5
+  recon_loss_type: mse
+  grad_penalty_weight: 10
+  checkpoint_dir: ./checkpoints/magvit_v2/
+  checkpoint_path: ./magvit_v2/magvit2-epoch=00284.ckpt
+  load_fsqvae: true
+  load_discriminator: false
+  compile: false
+  training:
+    batch_size: 16
+    num_workers: 4
+    max_epochs: 1024
+    fsq_vae_lr: 1e-4
+    disc_lr: 1e-4
+    betas: [0.9, 0.99]
+    weight_decay: 0.0
+    save_top_k: 2
