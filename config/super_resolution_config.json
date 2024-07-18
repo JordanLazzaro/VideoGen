@@ -1,0 +1,5 @@
+{
+    "super_resolution": {
+        "checkpoint_dir": "./checkpoints/super_resolution/"
+    }
+}
