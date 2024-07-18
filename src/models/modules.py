@@ -601,3 +601,151 @@ class Quantizer(nn.Module):
             'commitment_loss':  commitment_loss,
             'perplexity':       perplexity if self.track_codebook else None
         }
+    
+
+class Encoder(nn.Module):
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            init_channels,
+            channel_multipliers,
+            num_space_downsamples,
+            num_time_downsamples,
+            nblocks
+        ):
+        super().__init__()
+        channels = [init_channels * cm for cm in channel_multipliers]
+        self.in_conv = CausalConv3d(
+            in_channels  = in_channels,
+            out_channels = channels[0],
+            kernel_size  = (3,3,3)
+        )
+        space_downsample = [
+            EncoderBlock(
+                in_channels   = channels[i],
+                out_channels  = channels[i+1],
+                nblocks       = nblocks,
+                kernel_size   = (3,3,3),
+                space_only=True
+            )
+            for i in range(num_space_downsamples)
+        ]
+        time_downsample = [
+            EncoderBlock(
+                in_channels   = channels[i+1] if i < num_space_downsamples else channels[i],
+                out_channels  = channels[i+1],
+                nblocks       = nblocks,
+                kernel_size   = (3,3,3),
+                time_only=True
+            )
+            for i in range(num_time_downsamples)
+        ]
+
+        self.enc_blocks = nn.Sequential(*[
+            block
+            for pair in zip_longest(space_downsample, time_downsample)
+            for block in pair if block is not None
+        ])
+
+        self.out_block = nn.Sequential(
+            nn.GroupNorm(
+                num_groups   = channels[-1] // 2,
+                num_channels = channels[-1]
+            ),
+            nn.SiLU(),
+            CausalConv3d(
+                in_channels  = channels[-1],
+                out_channels = out_channels,
+                kernel_size  = (1,1,1)
+            ),
+        )
+
+    def forward(self, x):
+        x = self.in_conv(x)
+        x = self.enc_blocks(x)
+        x = self.out_block(x)
+        return x
+    
+
+class Decoder(nn.Module):
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            init_channels,
+            channel_multipliers,
+            num_space_upsamples,
+            num_time_upsamples,
+            nblocks
+        ):
+        super().__init__()
+        channels = [init_channels * cm for cm in channel_multipliers][::-1]
+        self.in_block = nn.Sequential(
+            CausalConv3d(
+                in_channels  = in_channels,
+                out_channels = channels[0],
+                kernel_size  = (3,3,3)
+            ),
+            nn.Sequential(*[
+                ResBlock3d(
+                    in_channels  = channels[0],
+                    out_channels = channels[0]
+                )
+                for i in range(nblocks)
+            ])
+        )
+        
+        space_upsample = [
+            DecoderBlock(
+                in_channels  = channels[i],
+                out_channels = channels[i+1],
+                nblocks      = nblocks,
+                space_only   = True,
+            )
+            for i in range(num_space_upsamples)]
+        
+        time_upsample = [
+            DecoderBlock(
+                in_channels  = channels[i+1] if i < num_space_upsamples else channels[i],
+                out_channels = channels[i+1],
+                nblocks      = nblocks,
+                time_only    = True,
+            )
+            for i in range(num_time_upsamples)]
+
+        self.dec_blocks = nn.Sequential(*[
+            block
+            for pair in zip_longest(space_upsample, time_upsample)
+            for block in pair if block is not None
+        ])
+        
+        self.out_block = nn.Sequential(
+            nn.SiLU(),
+            CausalConv3d(
+                in_channels  = channels[-1],
+                out_channels = out_channels,
+                kernel_size  = (3,3,3)
+            )
+        )
+
+    def forward(self, x):
+        x = self.in_block(x)
+        x = self.dec_blocks(x)
+        x = self.out_block(x)
+        return x
+    
+
+class LeCAM(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.register_buffer('logits_real_ema', torch.tensor(config.lecam_ema_init))
+        self.register_buffer('logits_fake_ema', torch.tensor(config.lecam_ema_init))
+        self.lecam_decay = config.lecam_decay
+
+    def update(self, logits_real, logits_fake):
+        self.logits_real_ema = self.lecam_decay * self.logits_real_ema + (1 - self.lecam_decay) * torch.mean(logits_real)
+        self.logits_fake_ema = self.lecam_decay * self.logits_fake_ema + (1 - self.lecam_decay) * torch.mean(logits_fake)
+
+    def forward(self, real_pred, fake_pred):
+        return torch.mean(F.relu(real_pred - self.logits_fake_ema) ** 2) + torch.mean(F.relu(self.logits_real_ema - fake_pred) ** 2)
