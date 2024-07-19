@@ -1,7 +1,5 @@
 # Video Generation
 
-NOTE: [MAGVIT2](notebooks/MAGVIT2.ipynb) is the notebook currently being worked on.
-
 ## Goal
 **Build a video generation model which can generate novel scenes from Steamboat Willie**
 
