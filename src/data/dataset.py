@@ -5,7 +5,7 @@ import tqdm
 
 from torch.nn import functional as F
 from torch.utils.data import Dataset
-from torchvision.transforms import Compose, Lambda, Resize, ToTensor, CenterCrop, Grayscale
+from torchvision.transforms import Compose, Lambda, Resize, CenterCrop, Grayscale, InterpolationMode
 from torchvision.datasets.video_utils import VideoClips
 
 
@@ -43,7 +43,7 @@ class SteamboatWillieDataset(Dataset):
                 Grayscale(num_output_channels=1),          # Convert to grayscale
                 Lambda(lambda x: x.permute(1, 0, 2, 3)),   # (T, C, H, W) to (C, T, H, W) for Conv3d
                 CenterCrop((480, 575)),                    # Center crop to remove virtical bars
-                Resize((config.img_size, config.img_size), interpolation=transforms.InterpolationMode.BICUBIC)
+                Resize((config.img_size, config.img_size), interpolation=InterpolationMode.BICUBIC)
         ])
 
         self.postprocess_transforms = Compose([

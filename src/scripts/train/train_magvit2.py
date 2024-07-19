@@ -1,4 +1,5 @@
 import yaml
+import argparse
 import wandb
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
@@ -11,7 +12,7 @@ from data.litdataset import SteamboatWillieDataModule
 
 resume_training = False
 
-config = yaml.safe_load('../../config/magvit2_config.yaml')
+config = yaml.safe_load('../../../config/magvit2_config.yaml')
 project_config = Config(config['project'])
 magvit2_config = Config(config['magvit2'])
 data_config    = Config(config['data'])
@@ -78,5 +79,9 @@ trainer = pl.Trainer(
 # lr_result.plot(show=True, suggest=True)
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Your script description")
+    parser.add_argument('--resume', action='store_true', help='A flag for resuming training from checkpoint')
+    args = parser.parse_args()
+    
     trainer.fit(lit_model, data)
     wandb.finish()

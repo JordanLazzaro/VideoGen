@@ -1,0 +1,10 @@
+transformer_decoder:
+  emb_dim: 512,
+  nheads: 8,
+  ctx_size": 2048,
+  window_size": 1024,
+  fan_out": 4,
+  nlayers": 6,
+  dropout": 0.0,
+  use_flash_attn": true,
+  checkpoint_dir": "./checkpoints/transformer/"
