@@ -9,8 +9,6 @@ from modules import (
     Encoder,
     Decoder,
     FSQ,
-    Upsample3d,
-    ResBlock3d,
     ResBlockDown2d,
     ResBlockDown3d
 )
@@ -55,78 +53,6 @@ class FSQVAE(nn.Module):
         z_q = self.quantize(z)
         x_hat = self.decode(z_q)
         return { 'z': z, 'z_q': z_q, 'x_hat': x_hat }
-    
-
-class MAGVIT2(nn.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.config = config
-        self.fsqvae = FSQVAE(config.fsqvae)
-
-        if config.discriminator.disc_type == 'tubelet':
-            self.discriminator = TubeletDiscriminator(config.discriminator)
-        elif config.discriminator.disc_type == 'patch':
-            self.discriminator = PatchDiscriminator(config.discriminator)
-        else:
-            self.discriminator = None
-
-    def forward(self, x):
-        return self.fsqvae(x)
-
-    def tokenize(self, x):
-        z_q = self.fsqvae.quantize(self.fsqvae.encode(x))
-        z_q = rearrange(z_q, 'b c d h w -> b (d h w) c')
-        idxs = self.fsqvae.fsq.codes_to_idxs(z_q)
-        return idxs
-
-    def decode(self, idxs):
-        c, d, h, w = self.config.latent_shape
-        codes = self.fsqvae.fsq.idxs_to_codes(idxs)
-        codes = rearrange(codes, 'b (d h w) c -> b c d h w', d=d, h=h, w=w)
-        return self.fsqvae.decode(codes)
-
-    def discriminate(self, x):
-        if self.discriminator is None:
-            raise ValueError('discriminator not initialized')
-        return self.discriminator(x)
-
-    def reconstruction_loss(self, x_hat, x):
-        if self.config.recon_loss_type == 'mae':
-            return F.l1_loss(x_hat, x)
-        elif self.config.recon_loss_type == 'mse':
-            return F.mse_loss(x_hat, x)
-        else:
-            raise ValueError('invalid reconstruction loss type')
-
-    def generator_loss(self, logits_fake):
-        ''' non-saturating generator loss (NLL) '''
-        return -torch.mean(logits_fake)
-
-    def discriminator_loss(self, logits_real, logits_fake):
-        '''
-        smooth version hinge loss from:
-        https://github.com/CompVis/taming-transformers/blob/3ba01b241669f5ade541ce990f7650a3b8f65318/taming/modules/losses/vqperceptual.py#L20C1-L24C18
-        '''
-        loss_real = torch.mean(F.softplus(1.0 - logits_real))
-        loss_fake = torch.mean(F.softplus(1.0 + logits_fake))
-        d_loss = 0.5 * (loss_real + loss_fake).mean()
-        return d_loss
-
-    def gradient_penalty(self, x, logits_real):
-        '''
-        inspired by:
-        https://github.com/lucidrains/magvit2-pytorch/blob/9f49074179c912736e617d61b32be367eb5f993a/magvit2_pytorch/magvit2_pytorch.py#L99
-        '''
-        gradients = torch_grad(
-            outputs = logits_real,
-            inputs = x,
-            grad_outputs = torch.ones(logits_real.size(), device = x.device),
-            create_graph = True,
-            retain_graph = True,
-            only_inputs = True
-        )[0]
-        gradients = rearrange(gradients, 'b ... -> b (...)')
-        return ((gradients.norm(2, dim = 1) - 1) ** 2).mean()
     
 
 class PatchDiscriminator(nn.Module):
@@ -229,41 +155,73 @@ class TubeletDiscriminator(nn.Module):
         return x
     
 
-class SuperResolution(nn.Module):
+class MAGVIT2(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.upsample_blocks = nn.Sequential(*[
-            nn.Sequential(
-                nn.Sequential(*[
-                    ResBlock3d(
-                        in_channels  = config.in_channels if i==0 and j==0 else config.hidden_channels,
-                        out_channels = config.hidden_channels,
-                        space_only   = True
-                    )
-                    for j in range(config.nblocks)
-                ]),
-                nn.GroupNorm(
-                    num_groups   = config.hidden_channels // 2 if config.hidden_channels >= 2 else 1,
-                    num_channels = config.hidden_channels
-                ),
-                nn.SiLU(),
-                Upsample3d(
-                    config.in_channels,
-                    out_channels=config.out_channels if i==config.num_upsamples-1 else config.hidden_channels,
-                    space_only=True
-                ),
-                nn.SiLU() if i<config.num_upsamples-1 else nn.Identity()
-            ) for i in range(config.num_upsamples)
-        ])
-        self.out_act = nn.Sigmoid()
+        self.config = config
+        self.fsqvae = FSQVAE(config.fsqvae)
+
+        if config.discriminator.disc_type == 'tubelet':
+            self.discriminator = TubeletDiscriminator(config.discriminator)
+        elif config.discriminator.disc_type == 'patch':
+            self.discriminator = PatchDiscriminator(config.discriminator)
+        else:
+            self.discriminator = None
 
     def forward(self, x):
-        return self.out_act(self.upsample_blocks(x))
+        return self.fsqvae(x)
 
-    def loss(self, y_hat, y):
-        if self.config.loss_type == 'mae':
-            return F.l1_loss(y_hat, y)
-        elif self.config.loss_type == 'mse':
-            return F.mse_loss(y_hat, y)
+    def tokenize(self, x):
+        z_q = self.fsqvae.quantize(self.fsqvae.encode(x))
+        z_q = rearrange(z_q, 'b c d h w -> b (d h w) c')
+        idxs = self.fsqvae.fsq.codes_to_idxs(z_q)
+        return idxs
+
+    def decode(self, idxs):
+        c, d, h, w = self.config.latent_shape
+        codes = self.fsqvae.fsq.idxs_to_codes(idxs)
+        codes = rearrange(codes, 'b (d h w) c -> b c d h w', d=d, h=h, w=w)
+        return self.fsqvae.decode(codes)
+
+    def discriminate(self, x):
+        if self.discriminator is None:
+            raise ValueError('discriminator not initialized')
+        return self.discriminator(x)
+
+    def reconstruction_loss(self, x_hat, x):
+        if self.config.recon_loss_type == 'mae':
+            return F.l1_loss(x_hat, x)
+        elif self.config.recon_loss_type == 'mse':
+            return F.mse_loss(x_hat, x)
         else:
             raise ValueError('invalid reconstruction loss type')
+
+    def generator_loss(self, logits_fake):
+        ''' non-saturating generator loss (NLL) '''
+        return -torch.mean(logits_fake)
+
+    def discriminator_loss(self, logits_real, logits_fake):
+        '''
+        smooth version hinge loss from:
+        https://github.com/CompVis/taming-transformers/blob/3ba01b241669f5ade541ce990f7650a3b8f65318/taming/modules/losses/vqperceptual.py#L20C1-L24C18
+        '''
+        loss_real = torch.mean(F.softplus(1.0 - logits_real))
+        loss_fake = torch.mean(F.softplus(1.0 + logits_fake))
+        d_loss = 0.5 * (loss_real + loss_fake).mean()
+        return d_loss
+
+    def gradient_penalty(self, x, logits_real):
+        '''
+        inspired by:
+        https://github.com/lucidrains/magvit2-pytorch/blob/9f49074179c912736e617d61b32be367eb5f993a/magvit2_pytorch/magvit2_pytorch.py#L99
+        '''
+        gradients = torch_grad(
+            outputs = logits_real,
+            inputs = x,
+            grad_outputs = torch.ones(logits_real.size(), device = x.device),
+            create_graph = True,
+            retain_graph = True,
+            only_inputs = True
+        )[0]
+        gradients = rearrange(gradients, 'b ... -> b (...)')
+        return ((gradients.norm(2, dim = 1) - 1) ** 2).mean()

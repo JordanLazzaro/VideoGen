@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
 from config import Config
-from models.models import MAGVIT2
+from src.models.magvit2 import MAGVIT2
 from models.lightning.litmodels import LitMAGVIT2
 from data.litdataset import SteamboatWillieDataModule
 
