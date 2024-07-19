@@ -10,10 +10,6 @@ from collections import OrderedDict
 from modules import LeCAM
 
 
-#########
-# utils #
-#########
-
 def adopt_weight(weight, epoch, threshold=0, value=None):
     '''
     https://github.com/CompVis/taming-transformers/blob/3ba01b241669f5ade541ce990f7650a3b8f65318/taming/modules/losses/vqperceptual.py#L14
@@ -94,9 +90,6 @@ def pick_random_frames(real_clips, fake_clips, num_frames=16):
 
     return real_frames, fake_frames
 
-##############
-# lit models #
-##############
 
 class LitMAGVIT2(pl.LightningModule):
     def __init__(self, magvit2, config):
@@ -326,42 +319,3 @@ class LitMAGVIT2(pl.LightningModule):
         comparison = torch.cat([real_patches[:n_images], fake_patches[:n_images]])
         grid = torchvision.utils.make_grid(comparison)
         self.logger.experiment.log({"train/disc_patches": [wandb.Image(grid, caption="Top: Real Patches, Bottom: Fake Patches")]})
-
-
-class LitSuperResolution(pl.LightningModule):
-    def __init__(self, model, config):
-        super().__init__()
-        self.model = model
-        self.config = config
-    
-    def forward(self, x):
-        return self.model(x)
-
-    def training_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self(x)
-
-        loss = self.model.loss(y_hat, y)
-
-        self.log('train/loss', loss, prog_bar=True)
-
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self(x)
-
-        loss = self.model.loss(y_hat, y)
-
-        self.log('val/loss', loss, prog_bar=True)
-
-        return loss
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(
-            self.model.parameters(),
-            lr=self.config.lr,
-            betas=(self.config.beta1, self.config.beta2),
-            weight_decay=self.config.weight_decay
-        )
-        return optimizer

@@ -5,7 +5,7 @@ project:
 
 data:
   paths: 
-    - /content/drive/My Drive/SteamboatWillie/SteamboatWillie.mp4
+    - ../data/steamboat_willie/SteamboatWillie.mp4
   clip_length: 16
   img_size: 256
   clip_dest_dir: ./clips
@@ -55,8 +55,8 @@ magvit2:
   recon_loss_weight: 5
   recon_loss_type: mse
   grad_penalty_weight: 10
-  checkpoint_dir: ./checkpoints/magvit_v2/
-  checkpoint_path: ./magvit_v2/magvit2-epoch=00284.ckpt
+  checkpoint_dir: models/magvit_v2/
+  checkpoint_path: models/magvit_v2/magvit2-epoch=00284.ckpt
   load_fsqvae: true
   load_discriminator: false
   compile: false
