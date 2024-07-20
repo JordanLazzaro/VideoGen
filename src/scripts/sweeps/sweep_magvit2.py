@@ -7,7 +7,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, Ea
 from config import Config
 from src.data.litdataset import SteamboatWillieDataModule
 from src.models.lightning.magvit2 import LitMAGVIT2
-from src.models.magvit2 import MAGVIT2
+from src.models.tokenizers.magvit2 import MAGVIT2
 
 
 def train():
