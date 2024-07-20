@@ -380,31 +380,28 @@ class DecoderBlock(nn.Module):
             time_only=False
         ):
         super().__init__()
-        self.group_norm = nn.GroupNorm(
-            num_groups   = in_channels // 2 if in_channels >= 2 else 1,
-            num_channels = in_channels
-        )
-
-        self.res_blocks = nn.Sequential(*[
-            ResBlock3d(
-                in_channels  = in_channels if i==0 else out_channels,
-                out_channels = out_channels
+        self.block = nn.Sequential(
+            nn.Sequential(*[
+                ResBlock3d(
+                    in_channels  = in_channels if i==0 else out_channels,
+                    out_channels = out_channels
+                )
+                for i in range(nblocks)
+            ]),
+            nn.GroupNorm(
+                num_groups   = out_channels // 2 if out_channels >= 2 else 1,
+                num_channels = out_channels
+            ),
+            Upsample3d(
+                in_channels   = out_channels,
+                out_channels  = out_channels,
+                space_only    = space_only,
+                time_only     = time_only 
             )
-            for i in range(nblocks)
-        ])
-
-        self.upsample = Upsample3d(
-            in_channels   = out_channels,
-            out_channels  = out_channels,
-            space_only    = space_only,
-            time_only     = time_only 
         )
 
     def forward(self, x):
-        x = self.group_norm(x)
-        x = self.res_blocks(x)
-        x = self.upsample(x)
-        return x
+        return self.block(x)
     
 
 class FSQ(nn.Module):
