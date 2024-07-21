@@ -4,7 +4,7 @@ from torch import nn
 import torch
 
 
-class BaseTokenizer(nn.Module, ABC):
+class Tokenizer(nn.Module, ABC):
     def __init__(self, config):
         super().__init__()
         self.config = config
