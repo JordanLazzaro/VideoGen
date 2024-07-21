@@ -5,6 +5,7 @@ from torch.cuda.amp import autocast
 from einops import rearrange, repeat
 from itertools import zip_longest
 
+
 def get_blur_filter(kernel_size):
     if kernel_size == 1:
         return torch.tensor([1.,])
@@ -22,6 +23,18 @@ def get_blur_filter(kernel_size):
         return torch.tensor([1., 6., 15., 20., 15., 6., 1.])
     else:
         raise ValueError(f'Blur kernel size {kernel_size} not supported')
+    
+
+class AdaptiveGroupNorm(nn.Module):
+    def __init__(self, num_channels):
+        super().__init__()
+        self.group_norm = nn.GroupNorm(
+            num_groups   = min(32, num_channels // 4),
+            num_channels = num_channels
+        )
+    
+    def forward(self, x):
+        self.group_norm(x)
 
 
 class CausalConv3d(nn.Module):
@@ -156,10 +169,7 @@ class ResBlock3d(nn.Module):
             self.identity = nn.Identity()
 
         self.block = nn.Sequential(
-            nn.GroupNorm(
-                num_groups   = in_channels // 2 if in_channels >= 2 else 1,
-                num_channels = in_channels
-            ),
+            AdaptiveGroupNorm(in_channels),
             nn.SiLU(),
             CausalConv3d(
                 in_channels  = in_channels,
@@ -168,10 +178,7 @@ class ResBlock3d(nn.Module):
                 stride       = (1,1,1),
                 dilation     = (1,1,1)
             ),
-            nn.GroupNorm(
-                num_groups   = out_channels // 2 if out_channels >= 2 else 1,
-                num_channels = out_channels
-            ),
+            AdaptiveGroupNorm(out_channels),
             nn.SiLU(),
             CausalConv3d(
                 in_channels  = out_channels,
@@ -212,10 +219,7 @@ class ResBlockDown2d(nn.Module):
                 kernel_size  = kernel_size,
                 padding      = 'same'
             ),
-            nn.GroupNorm(
-                num_groups   = out_channels // 2 if out_channels >= 2 else 1,
-                num_channels = out_channels
-            ),
+            AdaptiveGroupNorm(out_channels),
             nn.LeakyReLU(),
             BlurPool2d(out_channels),
             nn.Conv2d(
@@ -224,10 +228,7 @@ class ResBlockDown2d(nn.Module):
                 kernel_size  = kernel_size,
                 padding      = 'same'
             ),
-            nn.GroupNorm(
-                num_groups   = out_channels // 2 if out_channels >= 2 else 1,
-                num_channels = out_channels
-            ),
+            AdaptiveGroupNorm(out_channels),
             nn.LeakyReLU(),
         )
 
@@ -334,78 +335,6 @@ class Upsample3d(nn.Module):
         return x
     
 
-class EncoderBlock(nn.Module):
-    def __init__(
-            self,
-            in_channels,
-            out_channels,
-            nblocks,
-            kernel_size=(3,3,3),
-            space_only=False,
-            time_only=False
-        ):
-        super().__init__()
-        if space_only:
-            stride = (1, 2, 2)
-        elif time_only:
-            stride = (2, 1, 1)
-        else:
-            stride = (2, 2, 2)
-        
-        self.block = nn.Sequential(
-            CausalConv3d(
-                in_channels  = in_channels,
-                out_channels = out_channels,
-                kernel_size  = kernel_size,
-                stride       = stride
-            ),
-            nn.Sequential(*[
-                ResBlock3d(
-                    in_channels  = out_channels,
-                    out_channels = out_channels
-                )
-                for _ in range(nblocks)
-            ])
-        )
-
-    def forward(self, x):
-        return self.block(x)
-    
-
-class DecoderBlock(nn.Module):
-    def __init__(
-            self,
-            in_channels,
-            out_channels,
-            nblocks=2,
-            space_only=False,
-            time_only=False
-        ):
-        super().__init__()
-        self.block = nn.Sequential(
-            nn.Sequential(*[
-                ResBlock3d(
-                    in_channels  = in_channels if i==0 else out_channels,
-                    out_channels = out_channels
-                )
-                for i in range(nblocks)
-            ]),
-            nn.GroupNorm(
-                num_groups   = out_channels // 2 if out_channels >= 2 else 1,
-                num_channels = out_channels
-            ),
-            Upsample3d(
-                in_channels   = out_channels,
-                out_channels  = out_channels,
-                space_only    = space_only,
-                time_only     = time_only 
-            )
-        )
-
-    def forward(self, x):
-        return self.block(x)
-    
-
 class FSQ(nn.Module):
     def __init__(self, levels, eps=1e-3):
         super().__init__()
@@ -486,7 +415,7 @@ class FSQ(nn.Module):
         return z_q
     
 
-class Quantizer(nn.Module):
+class EMAVectorQuantization(nn.Module):
     def __init__(
             self,
             codebook_size,
@@ -600,139 +529,6 @@ class Quantizer(nn.Module):
             'commitment_loss':  commitment_loss,
             'perplexity':       perplexity if self.track_codebook else None
         }
-    
-
-class Encoder(nn.Module):
-    def __init__(
-            self,
-            in_channels,
-            out_channels,
-            init_channels,
-            channel_multipliers,
-            num_space_downsamples,
-            num_time_downsamples,
-            nblocks
-        ):
-        super().__init__()
-        channels = [init_channels * cm for cm in channel_multipliers]
-        self.in_conv = CausalConv3d(
-            in_channels  = in_channels,
-            out_channels = channels[0],
-            kernel_size  = (3,3,3)
-        )
-        space_downsample = [
-            EncoderBlock(
-                in_channels   = channels[i],
-                out_channels  = channels[i+1],
-                nblocks       = nblocks,
-                kernel_size   = (3,3,3),
-                space_only=True
-            )
-            for i in range(num_space_downsamples)
-        ]
-        time_downsample = [
-            EncoderBlock(
-                in_channels   = channels[i+1] if i < num_space_downsamples else channels[i],
-                out_channels  = channels[i+1],
-                nblocks       = nblocks,
-                kernel_size   = (3,3,3),
-                time_only=True
-            )
-            for i in range(num_time_downsamples)
-        ]
-
-        self.enc_blocks = nn.Sequential(*[
-            block
-            for pair in zip_longest(space_downsample, time_downsample)
-            for block in pair if block is not None
-        ])
-
-        self.out_block = nn.Sequential(
-            nn.GroupNorm(
-                num_groups   = channels[-1] // 2,
-                num_channels = channels[-1]
-            ),
-            nn.SiLU(),
-            CausalConv3d(
-                in_channels  = channels[-1],
-                out_channels = out_channels,
-                kernel_size  = (1,1,1)
-            ),
-        )
-
-    def forward(self, x):
-        x = self.in_conv(x)
-        x = self.enc_blocks(x)
-        x = self.out_block(x)
-        return x
-    
-
-class Decoder(nn.Module):
-    def __init__(
-            self,
-            in_channels,
-            out_channels,
-            init_channels,
-            channel_multipliers,
-            num_space_upsamples,
-            num_time_upsamples,
-            nblocks
-        ):
-        super().__init__()
-        channels = [init_channels * cm for cm in channel_multipliers][::-1]
-        self.in_block = nn.Sequential(
-            CausalConv3d(
-                in_channels  = in_channels,
-                out_channels = channels[0],
-                kernel_size  = (3,3,3)
-            ),
-            nn.Sequential(*[
-                ResBlock3d(
-                    in_channels  = channels[0],
-                    out_channels = channels[0]
-                )
-                for i in range(nblocks)
-            ])
-        )
-        
-        space_upsample = [
-            DecoderBlock(
-                in_channels  = channels[i],
-                out_channels = channels[i+1],
-                nblocks      = nblocks,
-                space_only   = True,
-            )
-            for i in range(num_space_upsamples)]
-        
-        time_upsample = [
-            DecoderBlock(
-                in_channels  = channels[i+1] if i < num_space_upsamples else channels[i],
-                out_channels = channels[i+1],
-                nblocks      = nblocks,
-                time_only    = True,
-            )
-            for i in range(num_time_upsamples)]
-
-        self.dec_blocks = nn.Sequential(*[
-            block
-            for pair in zip_longest(space_upsample, time_upsample)
-            for block in pair if block is not None
-        ])
-        
-        self.out_block = nn.Sequential(
-            nn.SiLU(),
-            CausalConv3d(
-                in_channels  = channels[-1],
-                out_channels = out_channels,
-                kernel_size  = (3,3,3)
-            )
-        )
-
-    def forward(self, x):
-        x = self.in_block(x)
-        x = self.dec_blocks(x)
-        x = self.out_block(x)
-        return x
     
 
 class LeCAM(nn.Module):

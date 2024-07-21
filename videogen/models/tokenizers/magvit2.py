@@ -6,12 +6,211 @@ from torch.autograd import grad as torch_grad
 from torch.nn import functional as F
 
 from modules import ( 
-    Encoder,
-    Decoder,
+    CausalConv3d,
+    ResBlock3d,
     FSQ,
     ResBlockDown2d,
-    ResBlockDown3d
+    ResBlockDown3d,
+    AdaptiveGroupNorm,
+    Upsample3d
 )
+
+class EncoderBlock(nn.Module):
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            nblocks,
+            kernel_size=(3,3,3),
+            space_only=False,
+            time_only=False
+        ):
+        super().__init__()
+        if space_only:
+            stride = (1, 2, 2)
+        elif time_only:
+            stride = (2, 1, 1)
+        else:
+            stride = (2, 2, 2)
+        
+        self.block = nn.Sequential(
+            CausalConv3d(
+                in_channels  = in_channels,
+                out_channels = out_channels,
+                kernel_size  = kernel_size,
+                stride       = stride
+            ),
+            nn.Sequential(*[
+                ResBlock3d(
+                    in_channels  = out_channels,
+                    out_channels = out_channels
+                )
+                for _ in range(nblocks)
+            ])
+        )
+
+    def forward(self, x):
+        return self.block(x)
+    
+
+class DecoderBlock(nn.Module):
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            nblocks=2,
+            space_only=False,
+            time_only=False
+        ):
+        super().__init__()
+        self.block = nn.Sequential(
+            nn.Sequential(*[
+                ResBlock3d(
+                    in_channels  = in_channels if i==0 else out_channels,
+                    out_channels = out_channels
+                )
+                for i in range(nblocks)
+            ]),
+            AdaptiveGroupNorm(out_channels),
+            Upsample3d(
+                in_channels   = out_channels,
+                out_channels  = out_channels,
+                space_only    = space_only,
+                time_only     = time_only 
+            )
+        )
+
+    def forward(self, x):
+        return self.block(x)
+    
+class Encoder(nn.Module):
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            init_channels,
+            channel_multipliers,
+            num_space_downsamples,
+            num_time_downsamples,
+            nblocks
+        ):
+        super().__init__()
+        channels = [init_channels * cm for cm in channel_multipliers]
+        self.in_conv = CausalConv3d(
+            in_channels  = in_channels,
+            out_channels = channels[0],
+            kernel_size  = (3,3,3)
+        )
+        space_downsample = [
+            EncoderBlock(
+                in_channels   = channels[i],
+                out_channels  = channels[i+1],
+                nblocks       = nblocks,
+                kernel_size   = (3,3,3),
+                space_only=True
+            )
+            for i in range(num_space_downsamples)
+        ]
+        time_downsample = [
+            EncoderBlock(
+                in_channels   = channels[i+1] if i < num_space_downsamples else channels[i],
+                out_channels  = channels[i+1],
+                nblocks       = nblocks,
+                kernel_size   = (3,3,3),
+                time_only=True
+            )
+            for i in range(num_time_downsamples)
+        ]
+
+        self.enc_blocks = nn.Sequential(*[
+            block
+            for pair in zip_longest(space_downsample, time_downsample)
+            for block in pair if block is not None
+        ])
+
+        self.out_block = nn.Sequential(
+            AdaptiveGroupNorm(channels[-1]),
+            nn.SiLU(),
+            CausalConv3d(
+                in_channels  = channels[-1],
+                out_channels = out_channels,
+                kernel_size  = (1,1,1)
+            ),
+        )
+
+    def forward(self, x):
+        x = self.in_conv(x)
+        x = self.enc_blocks(x)
+        x = self.out_block(x)
+        return x
+    
+
+class Decoder(nn.Module):
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            init_channels,
+            channel_multipliers,
+            num_space_upsamples,
+            num_time_upsamples,
+            nblocks
+        ):
+        super().__init__()
+        channels = [init_channels * cm for cm in channel_multipliers][::-1]
+        self.in_block = nn.Sequential(
+            CausalConv3d(
+                in_channels  = in_channels,
+                out_channels = channels[0],
+                kernel_size  = (3,3,3)
+            ),
+            nn.Sequential(*[
+                ResBlock3d(
+                    in_channels  = channels[0],
+                    out_channels = channels[0]
+                )
+                for i in range(nblocks)
+            ])
+        )
+        
+        space_upsample = [
+            DecoderBlock(
+                in_channels  = channels[i],
+                out_channels = channels[i+1],
+                nblocks      = nblocks,
+                space_only   = True,
+            )
+            for i in range(num_space_upsamples)]
+        
+        time_upsample = [
+            DecoderBlock(
+                in_channels  = channels[i+1] if i < num_space_upsamples else channels[i],
+                out_channels = channels[i+1],
+                nblocks      = nblocks,
+                time_only    = True,
+            )
+            for i in range(num_time_upsamples)]
+
+        self.dec_blocks = nn.Sequential(*[
+            block
+            for pair in zip_longest(space_upsample, time_upsample)
+            for block in pair if block is not None
+        ])
+        
+        self.out_block = nn.Sequential(
+            nn.SiLU(),
+            CausalConv3d(
+                in_channels  = channels[-1],
+                out_channels = out_channels,
+                kernel_size  = (3,3,3)
+            )
+        )
+
+    def forward(self, x):
+        x = self.in_block(x)
+        x = self.dec_blocks(x)
+        x = self.out_block(x)
+        return x
 
 
 class FSQVAE(nn.Module):
