@@ -7,7 +7,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, Ea
 from config import Config
 from videogen.models.tokenizers.magvit2 import MAGVIT2
 from videogen.models.lightning.magvit2 import LitMAGVIT2
-from data.litdataset import SteamboatWillieDataModule
+from videogen.data.steamboat_willie.litdataset import SteamboatWillieDataModule
 
 
 resume_training = False

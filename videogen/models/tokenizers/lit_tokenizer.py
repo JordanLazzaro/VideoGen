@@ -17,7 +17,7 @@ from utils import (
 
 
 class LitTokenizer(pl.LightningModule):
-    def __init__(self, config: Config, tokenizer: Tokenizer, discriminator: Discriminator):
+    def __init__(self, config: Config, tokenizer: Tokenizer, discriminator: Discriminator=None):
         super().__init__()
         self.automatic_optimization = False
 

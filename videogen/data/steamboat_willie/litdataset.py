@@ -1,6 +1,6 @@
 import torch
 import pytorch_lightning as pl
-from dataset import SteamboatWillieDataset
+from videogen.data.steamboat_willie.dataset import SteamboatWillieDataset
 
 
 class SteamboatWillieDataModule(pl.LightningDataModule):
