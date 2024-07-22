@@ -25,5 +25,9 @@ class Discriminator(nn.Module, ABC):
         pass
 
     @abstractmethod
+    def regularization_loss(self, logits_real: torch.Tensor, logits_fake: torch.Tensor):
+        pass
+
+    @abstractmethod
     def gradient_penalty(self, x: torch.Tensor, logits_real: torch.Tensor):
         pass

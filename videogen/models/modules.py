@@ -529,18 +529,3 @@ class EMAVectorQuantization(nn.Module):
             'commitment_loss':  commitment_loss,
             'perplexity':       perplexity if self.track_codebook else None
         }
-    
-
-class LeCAM(nn.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.register_buffer('logits_real_ema', torch.tensor(config.lecam_ema_init))
-        self.register_buffer('logits_fake_ema', torch.tensor(config.lecam_ema_init))
-        self.lecam_decay = config.lecam_decay
-
-    def update(self, logits_real, logits_fake):
-        self.logits_real_ema = self.lecam_decay * self.logits_real_ema + (1 - self.lecam_decay) * torch.mean(logits_real)
-        self.logits_fake_ema = self.lecam_decay * self.logits_fake_ema + (1 - self.lecam_decay) * torch.mean(logits_fake)
-
-    def forward(self, real_pred, fake_pred):
-        return torch.mean(F.relu(real_pred - self.logits_fake_ema) ** 2) + torch.mean(F.relu(self.logits_real_ema - fake_pred) ** 2)

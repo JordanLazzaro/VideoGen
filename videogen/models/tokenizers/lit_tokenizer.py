@@ -15,16 +15,14 @@ from utils import (
     log_val_clips
 )
 
-from modules import LeCAM
-
 
 class LitTokenizer(pl.LightningModule):
-    def __init__(self, config: Config, model: Tokenizer, discriminator: Discriminator):
+    def __init__(self, config: Config, tokenizer: Tokenizer, discriminator: Discriminator):
         super().__init__()
         self.automatic_optimization = False
 
         self.config = config
-        self.model = model
+        self.tokenizer = tokenizer
         self.discriminator = discriminator
 
         self.tokenizer_lr = config.training.tokenizer_lr
@@ -32,12 +30,12 @@ class LitTokenizer(pl.LightningModule):
 
     def configure_model(self):
         if self.config.compile:
-            self.model = torch.compile(self.model)
+            self.tokenizer = torch.compile(self.tokenizer)
             if self.discriminator is not None:
                 self.discriminator = torch.compile(self.discriminator)
 
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
-        return self.model(x)
+        return self.tokenizer(x)
     
     def training_step(self, batch):
         x = batch
@@ -50,11 +48,19 @@ class LitTokenizer(pl.LightningModule):
         
 
     def validation_step(self, batch):
-        pass
+        x = batch
+        out = self(x)
+
+        rec_loss = self.tokenizer.reconstruction_loss(out['x_hat'], x)
+        self.log('val/rec_loss', rec_loss, prog_bar=True)
+
+        log_val_clips(x, out)
+
+        return rec_loss
 
     def configure_optimizers(self):
         gen_optimizer = torch.optim.AdamW(
-            self.model.parameters(),
+            self.tokenizer.parameters(),
             lr=self.tokenizer_lr,
             betas=self.config.training.betas,
             weight_decay=self.config.training.weight_decay
@@ -87,7 +93,7 @@ class LitTokenizer(pl.LightningModule):
     def tokenizer_train_step(self, x, out):
         opt_g, _ = self.optimizers()
 
-        rec_loss = self.config.recon_loss_weight * self.model.reconstruction_loss(out['x_hat'], x)
+        rec_loss = self.config.recon_loss_weight * self.tokenizer.reconstruction_loss(out['x_hat'], x)
         self.log('train/rec_loss', rec_loss)
 
         if self.discriminator is not None:
@@ -138,10 +144,9 @@ class LitTokenizer(pl.LightningModule):
             elif self.config.discriminator.disc_type == 'patch':
                 real, fake = pick_random_frames(
                     x, out['x_hat'], num_frames=self.config.discriminator.num_frames)
+                log_disc_patches(real, fake)
             else:
                 raise ValueError('invalid discriminator type')
-
-            log_disc_patches(real, fake)
 
             if self.config.grad_penalty_weight is not None:
                 real = real.requires_grad_()
@@ -161,11 +166,10 @@ class LitTokenizer(pl.LightningModule):
                 disc_loss = disc_loss + self.config.grad_penalty_weight * grad_penalty
                 self.log('train/disc_loss+grad_penalty', disc_loss)
 
-            if self.config.lecam_loss_weight is not None:
-                self.lecam.update(logits_real, logits_fake)
-                lecam_loss = self.lecam(logits_real, logits_fake)
-                self.log('train/lecam_loss', lecam_loss)
-                disc_loss = disc_loss + self.config.lecam_loss_weight * lecam_loss.detach()
+            if self.config.reg_loss_weight is not None:
+                reg_loss = self.discriminator.regularization_loss(logits_real, logits_fake)
+                self.log('train/reg_loss', reg_loss)
+                disc_loss = disc_loss + self.config.reg_loss_weight * reg_loss.detach()
 
             self.toggle_optimizer(opt_d)
             self.manual_backward(disc_loss)
