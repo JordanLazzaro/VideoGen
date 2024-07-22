@@ -45,7 +45,6 @@ class LitTokenizer(pl.LightningModule):
         
         if self.discriminator is not None:
             self.discriminator_train_step(x, out)
-        
 
     def validation_step(self, batch):
         x = batch

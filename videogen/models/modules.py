@@ -156,7 +156,8 @@ class ResBlock3d(nn.Module):
             self,
             in_channels,
             out_channels,
-            kernel_size=(3,3,3)
+            kernel_size=(3,3,3),
+            causal=False
         ):
         super().__init__()
         if in_channels != out_channels:
@@ -177,6 +178,11 @@ class ResBlock3d(nn.Module):
                 kernel_size  = kernel_size,
                 stride       = (1,1,1),
                 dilation     = (1,1,1)
+            ) if causal else nn.Conv3d(
+                in_channels  = in_channels,
+                out_channels = out_channels,
+                kernel_size  = kernel_size,
+                stride       = (1,1,1)
             ),
             AdaptiveGroupNorm(out_channels),
             nn.SiLU(),
@@ -186,6 +192,11 @@ class ResBlock3d(nn.Module):
                 kernel_size  = kernel_size,
                 stride       = (1,1,1),
                 dilation     = (1,1,1)
+            ) if causal else nn.Conv3d(
+                in_channels  = out_channels,
+                out_channels = out_channels,
+                kernel_size  = kernel_size,
+                stride       = (1,1,1)
             ),
         )
 
@@ -201,6 +212,7 @@ class ResBlockDown2d(nn.Module):
             in_channels,
             out_channels,
             kernel_size=(3,3),
+            blurpool=False
         ):
         super().__init__()
         self.identity = nn.Sequential(
@@ -221,7 +233,13 @@ class ResBlockDown2d(nn.Module):
             ),
             AdaptiveGroupNorm(out_channels),
             nn.LeakyReLU(),
-            BlurPool2d(out_channels),
+            BlurPool2d(out_channels) if blurpool else nn.Conv2d(
+                in_channels  = out_channels,
+                out_channels = out_channels,
+                kernel_size  = kernel_size,
+                padding      = (1, 1),
+                stride       = 2
+            ),
             nn.Conv2d(
                 in_channels  = out_channels,
                 out_channels = out_channels,
@@ -243,23 +261,27 @@ class ResBlockDown3d(nn.Module):
             in_channels,
             out_channels,
             kernel_size=(3,3,3),
+            blurpool=False,
             space_only=False,
             time_only=False
         ):
         super().__init__()
         if space_only:
-            id_stride = (1, 2, 2)
+            stride = (1, 2, 2)
+            padding = (0, 1, 1)
         elif time_only:
-            id_stride = (2, 1, 1)
+            stride = (2, 1, 1)
+            padding = (1, 0, 0)
         else:
-            id_stride = (2, 2, 2)
+            stride = (2, 2, 2)
+            padding = (1, 1, 1)
        
         self.identity = nn.Sequential(
             nn.Conv3d(
                 in_channels  = in_channels,
                 out_channels = out_channels,
                 kernel_size  = (1, 1, 1),
-                stride       = id_stride
+                stride       = stride
             )
         )
 
@@ -271,7 +293,13 @@ class ResBlockDown3d(nn.Module):
                 padding      = 'same'
             ),
             nn.LeakyReLU(),
-            BlurPool3d(out_channels, space_only=space_only, time_only=time_only),
+            BlurPool3d(out_channels, space_only=space_only, time_only=time_only) if blurpool else nn.Conv3d(
+                in_channels  = out_channels,
+                out_channels = out_channels,
+                kernel_size  = kernel_size,
+                padding      = padding,
+                stride       = stride
+            ),
             nn.Conv3d(
                 in_channels  = out_channels,
                 out_channels = out_channels,
@@ -310,7 +338,8 @@ class Upsample3d(nn.Module):
             in_channels,
             out_channels,
             space_only=False,
-            time_only=False
+            time_only=False,
+            causal=False
         ):
         super().__init__()
         if space_only:
@@ -319,11 +348,17 @@ class Upsample3d(nn.Module):
             cm = 2
         else:
             cm = 8
+        
         self.conv = CausalConv3d(
             in_channels  = in_channels,
             out_channels = out_channels * cm,
             kernel_size  = (3,3,3)
+        ) if causal else nn.Conv3d(
+            in_channels  = in_channels,
+            out_channels = out_channels * cm,
+            kernel_size  = (3,3,3)
         )
+        
         self.pixel_shuffle = PixelShuffle3d(
             space_only=space_only,
             time_only=time_only
