@@ -370,7 +370,7 @@ class MAGVIT2(nn.Module):
     def forward(self, x):
         return self.fsqvae(x)
 
-    def tokenize(self, x):
+    def encode(self, x):
         z_q = self.fsqvae.quantize(self.fsqvae.encode(x))
         z_q = rearrange(z_q, 'b c d h w -> b (d h w) c')
         idxs = self.fsqvae.fsq.codes_to_idxs(z_q)
@@ -406,7 +406,7 @@ class MAGVIT2(nn.Module):
         '''
         loss_real = torch.mean(F.softplus(1.0 - logits_real))
         loss_fake = torch.mean(F.softplus(1.0 + logits_fake))
-        d_loss = 0.5 * (loss_real + loss_fake).mean()
+        d_loss = (loss_real + loss_fake).mean()
         return d_loss
 
     def gradient_penalty(self, x, logits_real):
