@@ -17,16 +17,19 @@ from utils import (
 
 
 class LitTokenizer(pl.LightningModule):
-    def __init__(self, config: Config, tokenizer: Tokenizer, discriminator: Discriminator=None):
+    def __init__(self, config: Config, tokenizer: Tokenizer):
         super().__init__()
         self.automatic_optimization = False
 
         self.config = config
         self.tokenizer = tokenizer
-        self.discriminator = discriminator
+        self.discriminator = None
 
         self.tokenizer_lr = config.training.tokenizer_lr
         self.disc_lr = config.training.disc_lr
+
+    def add_discriminator(self, discriminator: Discriminator):
+        self.discriminator = discriminator
 
     def configure_model(self):
         if self.config.compile:

@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Dict
+from config import Config
 from torch import nn
 import torch
+
+from videogen.models.tokenizers.models.magvit2 import MAGVIT2
 
 
 class Tokenizer(nn.Module, ABC):
@@ -24,3 +27,8 @@ class Tokenizer(nn.Module, ABC):
     @abstractmethod
     def reconstruction_loss(self, x_hat: torch.Tensor, x: torch.Tensor):
         pass
+
+    @staticmethod
+    def get_tokenizer(config: Config):
+        if config.tokenizer_name == 'magvit2':
+            return MAGVIT2(config)
