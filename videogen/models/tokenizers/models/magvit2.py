@@ -14,6 +14,8 @@ from modules import (
     AdaptiveGroupNorm,
     Upsample3d
 )
+from videogen.models.discriminators.models.patch_disc import PatchDiscriminator
+from videogen.models.discriminators.models.tubelet_disc import TubeletDiscriminator
 
 class EncoderBlock(nn.Module):
     def __init__(
@@ -252,106 +254,6 @@ class FSQVAE(nn.Module):
         z_q = self.quantize(z)
         x_hat = self.decode(z_q)
         return { 'z': z, 'z_q': z_q, 'x_hat': x_hat }
-    
-
-class PatchDiscriminator(nn.Module):
-    ''' bunch of downsampling resblocks + leaky relu '''
-    def __init__(self, config):
-        super().__init__()
-        self.in_conv = nn.Sequential(
-            nn.Conv2d(
-                in_channels  = config.in_channels,
-                out_channels = config.init_channels,
-                kernel_size  = (3, 3),
-                padding      = 'same'
-            ),
-            nn.LeakyReLU()
-        )
-
-        channels = [config.init_channels * cm for cm in config.channel_multipliers]
-        self.downsample = nn.Sequential(*[
-            ResBlockDown2d(
-                in_channels  = channels[i],
-                out_channels = channels[i+1]
-            )
-            for i in range(config.num_space_downsamples)
-        ])
-
-        self.out_conv = nn.Conv2d(
-            in_channels  = channels[-1],
-            out_channels = config.out_channels,
-            kernel_size  = (1, 1)
-        )
-
-    def forward(self, x):
-        assert len(x.shape) == 4, 'input shape must be (B, C, H, W)'
-        x = self.in_conv(x)
-        x = self.downsample(x)
-        x = self.out_conv(x)
-        return x
-    
-
-class TubeletDiscriminator(nn.Module):
-    ''' bunch of downsampling resblocks + leaky relu '''
-    def __init__(self, config):
-        super().__init__()
-        self.conv1 = nn.Sequential(
-            nn.Conv3d(
-                in_channels  = config.in_channels,
-                out_channels = config.init_channels,
-                kernel_size  = (3, 3, 3),
-                padding      = 'same'
-            ),
-            nn.LeakyReLU()
-        )
-
-        channels = [config.init_channels * cm for cm in config.channel_multipliers]
-        space_downsample = [
-            ResBlockDown3d(
-                in_channels  = channels[i],
-                out_channels = channels[i+1],
-                space_only   = True
-            )
-            for i in range(config.num_space_downsamples)
-        ]
-        time_downsample = [
-            ResBlockDown3d(
-                in_channels  = channels[i+1] if i < config.num_space_downsamples else channels[i],
-                out_channels = channels[i+1],
-                time_only    = True
-            )
-            for i in range(config.num_time_downsamples)
-        ]
-
-        self.downsample = nn.Sequential(*[
-            block
-            for pair in zip_longest(space_downsample, time_downsample)
-            for block in pair if block is not None
-        ])
-
-        self.conv2 = nn.Sequential(
-            nn.Conv3d(
-                in_channels  = channels[-1],
-                out_channels = channels[-1],
-                kernel_size  = (3, 3, 3),
-                padding      = 'same'
-            ),
-            nn.LeakyReLU()
-        )
-        self.mlp = nn.Sequential(
-            nn.Linear(4 * 4 * channels[-1], channels[-1]), # 4x4 after downsampling
-            nn.LeakyReLU(),
-            nn.Linear(channels[-1], 1)
-        )
-
-    def forward(self, x):
-        assert len(x.shape) == 5, 'input shape must be (B, C, T, H, W)'
-        x = self.conv1(x)
-        x = self.downsample(x)
-        x = self.conv2(x)
-        x = rearrange(x, 'b ... -> b (...)')
-        x = self.mlp(x)
-        return x
     
 
 class MAGVIT2(nn.Module):
