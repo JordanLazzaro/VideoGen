@@ -8,9 +8,8 @@ from videogen.models.tokenizers.models.magvit2 import MAGVIT2
 
 
 class Tokenizer(nn.Module, ABC):
-    def __init__(self, config):
+    def __init__(self):
         super().__init__()
-        self.config = config
 
     @abstractmethod
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
@@ -30,5 +29,5 @@ class Tokenizer(nn.Module, ABC):
 
     @staticmethod
     def get_tokenizer(config: Config):
-        if config.tokenizer_name == 'magvit2':
+        if config.tokenizer.name == 'magvit2':
             return MAGVIT2(config)

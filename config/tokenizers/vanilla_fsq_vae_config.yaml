@@ -1,0 +1,54 @@
+project:
+  name: SteamboatWillie Vanilla FSQ-VAE
+  wandb_project: SteamboatWillie Vanilla FSQ-VAE
+
+data:
+  name: steamboat_willie
+  paths: 
+    - ../data/steamboat_willie/SteamboatWillie.mp4
+  clip_length: 16
+  img_size: 256
+  clip_dest_dir: ./clips
+  num_workers: 4
+
+
+tokenizer:
+  name: vanilla_fsq_vae
+  encoder:
+    in_channels: 1
+    out_channels: 5
+    init_channels: 64
+    channel_multipliers: [1, 2, 2, 4]
+    num_downsamples: 3
+    num_space_downsamples: 3
+    num_time_downsamples: 2
+    nblocks: 1
+  quantization:
+    levels: [11, 11, 11, 11, 11]
+  decoder:
+    in_channels: 5
+    out_channels: 1
+    init_channels: 64
+    channel_multipliers: [1, 2, 2, 4]
+    num_upsamples: 3
+    num_space_upsamples: 3
+    num_time_upsamples: 2
+    nblocks: 1
+  loss:
+    recon_loss_weight: None
+    recon_loss_type: mse
+  discriminator:
+    None
+  compile: false
+  training:
+    batch_size: 16
+    num_workers: 4
+    max_epochs: 1024
+    fsq_vae_lr: 1e-4
+    disc_lr: 1e-4
+    betas: [0.9, 0.99]
+    use_lr_schedule: false
+    weight_decay: 0.0
+    save_top_k: 2
+    checkpoint_dir: models/tokenizers/vanilla_fsq_vae
+    checkpoint_path: None

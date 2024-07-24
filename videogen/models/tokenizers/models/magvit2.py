@@ -14,8 +14,9 @@ from modules import (
     AdaptiveGroupNorm,
     Upsample3d
 )
-from videogen.models.discriminators.models.patch_disc import PatchDiscriminator
-from videogen.models.discriminators.models.tubelet_disc import TubeletDiscriminator
+from videogen.models.tokenizers.discriminators.models.patch_disc import PatchDiscriminator
+from videogen.models.tokenizers.discriminators.models.tubelet_disc import TubeletDiscriminator
+
 
 class EncoderBlock(nn.Module):
     def __init__(

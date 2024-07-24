@@ -3,7 +3,7 @@ import pytorch_lightning as pl
 from collections import OrderedDict
 from typing import Dict
 
-from videogen.models.discriminators.discriminator import Discriminator
+from videogen.models.tokenizers.discriminators.discriminator import Discriminator
 from videogen.models.tokenizers.tokenizer import Tokenizer
 from config import Config
 
@@ -75,7 +75,7 @@ class LitTokenizer(pl.LightningModule):
             weight_decay=self.config.training.weight_decay
         ) if self.discriminator is not None else None
 
-        if self.config.use_lr_schedule:
+        if self.config.training.use_lr_schedule:
             gen_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                 gen_optimizer, T_max=self.config.training_steps)
 
@@ -95,14 +95,17 @@ class LitTokenizer(pl.LightningModule):
     def tokenizer_train_step(self, x, out):
         opt_g, _ = self.optimizers()
 
-        rec_loss = self.config.recon_loss_weight * self.tokenizer.reconstruction_loss(out['x_hat'], x)
+        rec_loss = self.tokenizer.reconstruction_loss(out['x_hat'], x)
         self.log('train/rec_loss', rec_loss)
+
+        if self.config.loss.recon_loss_weight is not None:
+            rec_loss = rec_loss * self.config.loss.recon_loss_weight
 
         if self.discriminator is not None:
             gen_loss_weight = adopt_weight(
-                self.config.gen_loss_weight,
+                self.config.discriminator.loss.gen_loss_weight,
                 self.current_epoch,
-                threshold=self.config.discriminator.gen_loss_delay_epochs
+                threshold=self.config.discriminator.loss.gen_loss_delay_epochs
             )
 
             if gen_loss_weight is not None:
@@ -133,9 +136,9 @@ class LitTokenizer(pl.LightningModule):
         _, opt_d = self.optimizers()
         
         disc_loss_weight = adopt_weight(
-            self.config.disc_loss_weight,
+            self.config.discriminator.loss.disc_loss_weight,
             self.current_epoch,
-            threshold=self.config.discriminator.disc_loss_delay_epochs
+            threshold=self.config.discriminator.loss.disc_loss_delay_epochs
         )
 
         if disc_loss_weight is not None:
@@ -165,13 +168,13 @@ class LitTokenizer(pl.LightningModule):
             if self.config.grad_penalty_weight is not None:
                 grad_penalty = self.discriminator.gradient_penalty(real, logits_real)
                 self.log('train/grad_penalty', grad_penalty)
-                disc_loss = disc_loss + self.config.grad_penalty_weight * grad_penalty
+                disc_loss = disc_loss + self.config.discriminator.loss.grad_penalty_weight * grad_penalty
                 self.log('train/disc_loss+grad_penalty', disc_loss)
 
             if self.config.reg_loss_weight is not None:
                 reg_loss = self.discriminator.regularization_loss(logits_real, logits_fake)
                 self.log('train/reg_loss', reg_loss)
-                disc_loss = disc_loss + self.config.reg_loss_weight * reg_loss.detach()
+                disc_loss = disc_loss + self.config.discriminator.loss.reg_loss_weight * reg_loss.detach()
 
             self.toggle_optimizer(opt_d)
             self.manual_backward(disc_loss)

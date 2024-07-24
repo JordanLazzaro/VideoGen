@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
 from config import Config
-from videogen.models.discriminators.discriminator import Discriminator
+from videogen.models.tokenizers.discriminators.discriminator import Discriminator
 from videogen.models.tokenizers.tokenizer import Tokenizer
 from videogen.models.tokenizers.lit_tokenizer import LitTokenizer
 from videogen.data.steamboat_willie.litdataset import SteamboatWillieDataModule
@@ -28,7 +28,7 @@ def train(config: Dict[str: any], **kwargs):
     logger = None
     if kwargs['logging']:
         wandb.init(
-            project = config.wandb_project,
+            project = config.project.wandb_project,
             config  = config,
             resume  = kwargs['resume']
         )

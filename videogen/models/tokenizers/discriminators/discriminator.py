@@ -4,10 +4,10 @@ from config import Config
 from torch import nn
 import torch
 
+
 class Discriminator(nn.Module, ABC):
-    def __init__(self, config):
+    def __init__(self):
         super().__init__()
-        self.config = config
 
     @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -35,7 +35,7 @@ class Discriminator(nn.Module, ABC):
 
     @staticmethod
     def get_discriminator(config: Config):
-        if config.discriminator_name == 'patch':
+        if config.discriminator.name == 'patch':
             return None
-        if config.discriminator_name == 'tubelet':
+        if config.discriminator.name == 'tubelet':
             return None
