@@ -22,7 +22,8 @@ tokenizer:
     num_downsamples: 3
     num_space_downsamples: 3
     num_time_downsamples: 2
-    nblocks: 1
+    num_res_blocks: 1
+    causal: false
   quantization:
     levels: [11, 11, 11, 11, 11]
   decoder:
@@ -33,7 +34,8 @@ tokenizer:
     num_upsamples: 3
     num_space_upsamples: 3
     num_time_upsamples: 2
-    nblocks: 1
+    num_res_blocks: 1
+    causal: false
   loss:
     recon_loss_weight: None
     recon_loss_type: mse
