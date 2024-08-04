@@ -6,10 +6,10 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
 from config import Config
+from videogen.data.litdataset import LitDataModule
 from videogen.models.tokenizers.discriminators.discriminator import Discriminator
 from videogen.models.tokenizers.tokenizer import Tokenizer
 from videogen.models.tokenizers.lit_tokenizer import LitTokenizer
-from videogen.data.steamboat_willie.litdataset import SteamboatWillieDataModule
 
 
 def train(config: Dict[str: any], **kwargs):
@@ -22,8 +22,7 @@ def train(config: Dict[str: any], **kwargs):
         discriminator = Discriminator.get_discriminator(config)
         lit_tokenizer.add_discriminator(discriminator)
 
-    # TODO: make data module abstract with factory
-    data = SteamboatWillieDataModule(config, config.training.batch_size, (128, 128))
+    data = LitDataModule(config)
 
     logger = None
     if kwargs['logging']:

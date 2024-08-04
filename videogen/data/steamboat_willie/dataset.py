@@ -30,13 +30,11 @@ class SteamboatWillieDataset(Dataset):
             train_split=0.8,
             shuffle=True,
             augmentation=True,
-            new_img_size=None
         ):
         super().__init__()
         self.config = config
         self.train_split = train_split
         self.mode = mode
-        self.new_img_size = new_img_size
 
         self.preprocess_transforms = Compose([
                 Lambda(lambda x: x.permute(0, 3, 1, 2)),   # (T, H, W, C) to (T, C, H, W) for Greyscale
@@ -49,7 +47,7 @@ class SteamboatWillieDataset(Dataset):
         self.postprocess_transforms = Compose([
             Lambda(lambda x: x / 255.),
             Lambda(lambda x: x.view(-1, self.config.clip_length, self.config.img_size, self.config.img_size)),
-            Lambda(lambda x: F.interpolate(x, size=self.new_img_size, mode='bicubic', align_corners=False) if self.new_img_size is not None else x)
+            Lambda(lambda x: F.interpolate(x, size=self.config.dataset.image_size, mode='bicubic', align_corners=False) if self.config.dataset.native_image_size is not None else x)
         ])
 
         if self.mode == 'train' and augmentation:

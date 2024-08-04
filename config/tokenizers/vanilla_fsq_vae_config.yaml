@@ -2,8 +2,8 @@ project:
   name: SteamboatWillie Vanilla FSQ-VAE
   wandb_project: SteamboatWillie Vanilla FSQ-VAE
 
-data:
-  name: steamboat_willie
+dataset:
+  name: steamboat-willie
   paths: 
     - ../data/steamboat_willie/SteamboatWillie.mp4
   clip_length: 16

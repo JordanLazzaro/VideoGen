@@ -5,6 +5,7 @@ from torch import nn
 import torch
 
 from videogen.models.tokenizers.models.magvit2 import MAGVIT2
+from videogen.models.tokenizers.models.fsq_vae import FSQVAE
 
 
 class Tokenizer(nn.Module, ABC):
@@ -29,5 +30,7 @@ class Tokenizer(nn.Module, ABC):
 
     @staticmethod
     def get_tokenizer(config: Config):
+        if config.tokenizer.name == 'vanilla_fsq_vae':
+            return FSQVAE(config)
         if config.tokenizer.name == 'magvit2':
             return MAGVIT2(config)

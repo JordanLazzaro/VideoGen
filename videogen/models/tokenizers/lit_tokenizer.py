@@ -28,14 +28,15 @@ class LitTokenizer(pl.LightningModule):
         self.tokenizer_lr = config.training.tokenizer_lr
         self.disc_lr = config.training.disc_lr
 
-    def add_discriminator(self, discriminator: Discriminator):
-        self.discriminator = discriminator
+    def add_discriminator(self, discriminator: Discriminator) -> None:
+        if self.config.compile:
+            self.discriminator = torch.compile(discriminator)
+        else:
+            self.discriminator = discriminator
 
-    def configure_model(self):
+    def configure_model(self) -> None:
         if self.config.compile:
             self.tokenizer = torch.compile(self.tokenizer)
-            if self.discriminator is not None:
-                self.discriminator = torch.compile(self.discriminator)
 
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         return self.tokenizer(x)
@@ -92,7 +93,7 @@ class LitTokenizer(pl.LightningModule):
             { 'optimizer': disc_optimizer }
         )
     
-    def tokenizer_train_step(self, x, out):
+    def tokenizer_train_step(self, x, out) -> None:
         opt_g, _ = self.optimizers()
 
         rec_loss = self.tokenizer.reconstruction_loss(out['x_hat'], x)
@@ -132,7 +133,7 @@ class LitTokenizer(pl.LightningModule):
         opt_g.zero_grad()
         self.untoggle_optimizer(opt_g)
 
-    def discriminator_train_step(self, x, out):
+    def discriminator_train_step(self, x, out) -> None:
         _, opt_d = self.optimizers()
         
         disc_loss_weight = adopt_weight(
