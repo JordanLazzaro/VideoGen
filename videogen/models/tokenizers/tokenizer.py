@@ -30,7 +30,7 @@ class Tokenizer(nn.Module, ABC):
 
     @staticmethod
     def get_tokenizer(config: Config):
-        if config.tokenizer.name == 'vanilla_fsq_vae':
+        if config.tokenizer.name == 'vanilla-fsq-vae':
             return FSQVAE(config)
         if config.tokenizer.name == 'magvit2':
             return MAGVIT2(config)
