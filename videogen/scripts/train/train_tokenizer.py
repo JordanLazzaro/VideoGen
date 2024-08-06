@@ -71,7 +71,7 @@ def train(config: Dict[str: any], **kwargs):
     trainer.fit(lit_tokenizer, data)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train you Tokenizers here!")
+    parser = argparse.ArgumentParser(description="Train your Tokenizers here!")
     parser.add_argument('--config', type=str, required=True, help="Path to configuration file")
     parser.add_argument('--logging', type=bool, default=True, help="Log to wandb")
     parser.add_argument('--monitor_lr', type=bool, default=True, help="Log Learning Rate to wandb")
@@ -82,4 +82,4 @@ if __name__ == "__main__":
     args = parser.parse_args()  
 
     config = yaml.safe_load(args.config)
-    train(config, args.resume)
+    train(config, args)

@@ -20,27 +20,27 @@ class FSQVAE(Tokenizer):
     def __init__(self, config: Config):
         super().__init__()
         self.encoder = Encoder(
-            in_channels           = config.encoder.in_channels,
-            out_channels          = config.encoder.out_channels,
-            init_channels         = config.encoder.init_channels,
-            channel_multipliers   = config.encoder.channel_multipliers,
-            num_space_downsamples = config.encoder.num_space_downsamples,
-            num_time_downsamples  = config.encoder.num_time_downsamples,
-            num_res_blocks        = config.encoder.num_res_blocks,
-            causal                = config.encoder.causal
+            in_channels           = config.tokenizer.encoder.in_channels,
+            out_channels          = config.tokenizer.encoder.out_channels,
+            init_channels         = config.tokenizer.encoder.init_channels,
+            channel_multipliers   = config.tokenizer.encoder.channel_multipliers,
+            num_space_downsamples = config.tokenizer.encoder.num_space_downsamples,
+            num_time_downsamples  = config.tokenizer.encoder.num_time_downsamples,
+            num_res_blocks        = config.tokenizer.encoder.num_res_blocks,
+            causal                = config.tokenizer.encoder.causal
         )
 
-        self.fsq = FSQ(levels = config.quantization.levels)
+        self.fsq = FSQ(levels = config.tokenizer.quantization.levels)
 
         self.decoder = Decoder(
-            in_channels         = config.decoder.in_channels,
-            out_channels        = config.decoder.out_channels,
-            init_channels       = config.decoder.init_channels,
-            channel_multipliers = config.decoder.channel_multipliers,
-            num_space_upsamples = config.decoder.num_space_upsamples,
-            num_time_upsamples  = config.decoder.num_time_upsamples,
-            num_res_blocks      = config.decoder.num_res_blocks,
-            causal              = config.decoder.causal
+            in_channels         = config.tokenizer.decoder.in_channels,
+            out_channels        = config.tokenizer.decoder.out_channels,
+            init_channels       = config.tokenizer.decoder.init_channels,
+            channel_multipliers = config.tokenizer.decoder.channel_multipliers,
+            num_space_upsamples = config.tokenizer.decoder.num_space_upsamples,
+            num_time_upsamples  = config.tokenizer.decoder.num_time_upsamples,
+            num_res_blocks      = config.tokenizer.decoder.num_res_blocks,
+            causal              = config.tokenizer.decoder.causal
         )
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
@@ -53,9 +53,9 @@ class FSQVAE(Tokenizer):
         return self.decoder(z_q)
     
     def reconstruction_loss(self, x_hat: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
-        if self.config.loss.recon_loss_type == 'mae':
+        if self.config.tokenizer.loss.recon_loss_type == 'mae':
             return F.l1_loss(x_hat, x)
-        elif self.config.loss.recon_loss_type == 'mse':
+        elif self.config.tokenizer.loss.recon_loss_type == 'mse':
             return F.mse_loss(x_hat, x)
         else:
             raise ValueError('invalid reconstruction loss type')
