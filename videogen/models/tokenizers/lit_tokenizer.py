@@ -5,7 +5,7 @@ from typing import Dict
 
 from videogen.models.tokenizers.discriminators.discriminator import Discriminator
 from videogen.models.tokenizers.tokenizer import Tokenizer
-from config import Config
+from videogen.config import Config
 
 from utils import (
     pick_random_frames,

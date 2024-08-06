@@ -5,7 +5,7 @@ from einops import rearrange
 from torch.autograd import grad as torch_grad
 from torch.nn import functional as F
 
-from config import Config
+from videogen.config import Config
 
 from modules import (
     FSQ,

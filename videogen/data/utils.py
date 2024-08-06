@@ -1,5 +1,5 @@
 from videogen.data.steamboat_willie.dataset import SteamboatWillieDataset
-from config import Config
+from videogen.config import Config
 
 
 def get_dataset(config: Config, mode: str):

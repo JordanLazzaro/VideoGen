@@ -5,11 +5,10 @@ import wandb
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
-from config import Config
-from videogen.data.litdataset import LitDataModule
-from videogen.models.tokenizers.discriminators.discriminator import Discriminator
-from videogen.models.tokenizers.tokenizer import Tokenizer
-from videogen.models.tokenizers.lit_tokenizer import LitTokenizer
+
+from videogen import Config, LitDataModule, Discriminator, Tokenizer, LitTokenizer
+
+pl.seed_everything(42)
 
 
 def train(config: Dict[str: any], **kwargs):
