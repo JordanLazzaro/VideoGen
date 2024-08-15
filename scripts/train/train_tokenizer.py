@@ -1,8 +1,10 @@
-from typing import Dict
+#!/usr/bin/env python3
+
 import yaml
 import argparse
 import wandb
 import pytorch_lightning as pl
+from typing import Dict
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
 

@@ -41,12 +41,12 @@ class SteamboatWillieDataset(Dataset):
                 Grayscale(num_output_channels=1),          # Convert to grayscale
                 Lambda(lambda x: x.permute(1, 0, 2, 3)),   # (T, C, H, W) to (C, T, H, W) for Conv3d
                 CenterCrop((480, 575)),                    # Center crop to remove virtical bars
-                Resize((config.img_size, config.img_size), interpolation=InterpolationMode.BICUBIC)
+                Resize((config.dataset.img_size, config.dataset.img_size), interpolation=InterpolationMode.BICUBIC)
         ])
 
         self.postprocess_transforms = Compose([
             Lambda(lambda x: x / 255.),
-            Lambda(lambda x: x.view(-1, self.config.clip_length, self.config.img_size, self.config.img_size)),
+            Lambda(lambda x: x.view(-1, self.config.dataset.clip_length, self.config.dataset.img_size, self.config.dataset.img_size)),
             Lambda(lambda x: F.interpolate(x, size=self.config.dataset.image_size, mode='bicubic', align_corners=False) if self.config.dataset.native_image_size is not None else x)
         ])
 
@@ -54,8 +54,7 @@ class SteamboatWillieDataset(Dataset):
             self.postprocess_transforms.transforms.append(RandomHorizontalFlipVideo(p=0.5))
 
         if os.path.exists(config.clip_dest_dir):
-            clip_paths = self.build_existing_clip_paths(config.clip_dest_dir)
-            self.clips = self.build_clip_refs(clip_paths)
+            self.clips = self.load_existing_clips(config.dataset.clip_dest_dir)
         else:
             video_clips = VideoClips(
                 config.paths,
@@ -63,7 +62,7 @@ class SteamboatWillieDataset(Dataset):
                 frames_between_clips=config.clip_length
             )
 
-            self.clips = self.build_clip_refs(self.build_clip_paths(video_clips, self.preprocess_transforms, config.clip_dest_dir))
+            self.clips = self.build_clips(video_clips, self.preprocess_transforms, config.dataset.clip_dest_dir)
 
         if mode in ['train', 'val']:
             total_clips = len(self.clips)
@@ -73,7 +72,6 @@ class SteamboatWillieDataset(Dataset):
                 indices = list(range(total_clips))
 
             train_size = int(total_clips * train_split)
-
             if mode == 'train':
                 self.clip_indices = indices[:train_size]
             else:
@@ -81,10 +79,10 @@ class SteamboatWillieDataset(Dataset):
         elif mode == 'full':
             self.clip_indices = list(range(len(self.clips)))
 
-    def build_clip_paths(self, video_clips, transforms, clip_dest_dir):
+    def build_clips(self, video_clips, clip_dest_dir):
         """
         Build set of binary files to store processed video clips
-        returns dict of clip_idx -> mmapped file path
+        returns dict of clip_idx -> mmapped clips
         """
         clip_paths = {}
 
@@ -104,30 +102,23 @@ class SteamboatWillieDataset(Dataset):
             del fp
             clip_paths[idx] = mmapped_file_path
 
-        return clip_paths
+        clips = {}
+        for idx, path in tqdm(clip_paths.items(), desc='Building clip refs'):
+            clips[idx] = np.memmap(path, dtype='uint8', mode='r')
 
-    def build_existing_clip_paths(self, clip_dest_dir):
+        return clips
+
+    def load_existing_clips(self, clip_dest_dir):
         """"
         returns dict of clip_idx -> mmapped file path
         from existing .bin files
         """
-        clips_paths = {}
+        clips = {}
         for filename in os.listdir(clip_dest_dir):
             if filename.startswith('clip_') and filename.endswith('.bin'):
                 idx = int(filename.split('_')[1].split('.')[0])
                 file_path = os.path.join(clip_dest_dir, filename)
-                clips_paths[idx] = file_path
-
-        return clips_paths
-
-    def build_clip_refs(self, clip_paths):
-        """
-        Build mmap reference to bin files
-        returns dict of clip_idx -> np.array mmapped to respective bin file
-        """
-        clips = {}
-        for idx, path in tqdm(clip_paths.items(), desc='Building clip refs'):
-            clips[idx] = np.memmap(path, dtype='uint8', mode='r')
+                clips[idx] = np.memmap(file_path, dtype='uint8', mode='r')        
 
         return clips
 

@@ -5,10 +5,10 @@ project:
 dataset:
   name: steamboat-willie
   paths: 
-    - ../data/steamboat_willie/SteamboatWillie.mp4
+    - videogen/data/steamboat_willie/SteamboatWillie.mp4
   clip_length: 16
-  img_size: 256
-  clip_dest_dir: ./clips
+  img_size: 
+  clip_dest_dir: videogen/data/steamboat_willie/clips
   num_workers: 4
 
 tokenizer:
@@ -51,5 +51,5 @@ tokenizer:
     use_lr_schedule: false
     weight_decay: 0.0
     save_top_k: 2
-    checkpoint_dir: models/tokenizers/vanilla_fsq_vae
+    checkpoint_dir: videogen/models/tokenizers/vanilla_fsq_vae/
     checkpoint_path: None
