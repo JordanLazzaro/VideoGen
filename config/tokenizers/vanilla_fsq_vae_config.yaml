@@ -5,10 +5,10 @@ project:
 dataset:
   name: steamboat-willie
   paths: 
-    - videogen/data/steamboat_willie/SteamboatWillie.mp4
+    - 'videogen/data/steamboat_willie/SteamboatWillie.mp4'
   clip_length: 16
   img_size: 128
-  clip_dest_dir: videogen/data/steamboat_willie/clips
+  clip_dest_dir: 'videogen/data/steamboat_willie/clips'
   num_workers: 4
 
 tokenizer:
@@ -44,12 +44,13 @@ tokenizer:
   training:
     batch_size: 16
     num_workers: 4
+    num_gpus: 1
     max_epochs: 1024
-    tokenizer_lr: 1e-4
-    disc_lr: 1e-4
+    tokenizer_lr: 1.0e-4
+    disc_lr: 1.0e-4
     betas: [0.9, 0.99]
     use_lr_schedule: false
     weight_decay: 0.0
     save_top_k: 2
-    checkpoint_dir: videogen/models/tokenizers/vanilla_fsq_vae/
+    checkpoint_dir: 'videogen/models/tokenizers/vanilla_fsq_vae/'
     checkpoint_path: None

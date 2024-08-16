@@ -5,7 +5,7 @@ from einops import rearrange
 from torch.autograd import grad as torch_grad
 from torch.nn import functional as F
 
-from modules import ( 
+from videogen.models.modules import ( 
     CausalConv3d,
     ResBlock3d,
     FSQ,

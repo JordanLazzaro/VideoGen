@@ -7,12 +7,11 @@ from torch.nn import functional as F
 
 from videogen.config import Config
 
-from modules import (
+from videogen.models.modules import (
     FSQ,
     Encoder,
     Decoder
 )
-
 from videogen.models.tokenizers.tokenizer import Tokenizer
 
 

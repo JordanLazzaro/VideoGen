@@ -4,9 +4,6 @@ from videogen.config import Config
 from torch import nn
 import torch
 
-from videogen.models.tokenizers.models.magvit2 import MAGVIT2
-from videogen.models.tokenizers.models.fsq_vae import FSQVAE
-
 
 class Tokenizer(nn.Module, ABC):
     def __init__(self):
@@ -30,6 +27,9 @@ class Tokenizer(nn.Module, ABC):
 
     @staticmethod
     def get_tokenizer(config: Config):
+        from videogen.models.tokenizers.models.magvit2 import MAGVIT2
+        from videogen.models.tokenizers.models.fsq_vae import FSQVAE
+        
         if config.tokenizer.name == 'vanilla-fsq-vae':
             return FSQVAE(config)
         if config.tokenizer.name == 'magvit2':

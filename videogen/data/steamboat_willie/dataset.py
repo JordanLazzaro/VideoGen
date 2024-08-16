@@ -46,23 +46,23 @@ class SteamboatWillieDataset(Dataset):
 
         self.postprocess_transforms = Compose([
             Lambda(lambda x: x / 255.),
-            Lambda(lambda x: x.view(-1, self.config.dataset.clip_length, self.config.dataset.img_size, self.config.dataset.img_size)),
-            Lambda(lambda x: F.interpolate(x, size=self.config.dataset.image_size, mode='bicubic', align_corners=False) if self.config.dataset.native_image_size is not None else x)
+            Lambda(lambda x: x.view(-1, config.dataset.clip_length, config.dataset.img_size, config.dataset.img_size)),
+            Lambda(lambda x: F.interpolate(x, size=config.dataset.image_size, mode='bicubic', align_corners=False) if config.dataset.native_image_size is not None else x)
         ])
 
         if self.mode == 'train' and augmentation:
             self.postprocess_transforms.transforms.append(RandomHorizontalFlipVideo(p=0.5))
 
-        if os.path.exists(config.clip_dest_dir):
+        if os.path.exists(config.dataset.clip_dest_dir):
             self.clips = self.load_existing_clips(config.dataset.clip_dest_dir)
         else:
             video_clips = VideoClips(
-                config.paths,
-                clip_length_in_frames=config.clip_length,
-                frames_between_clips=config.clip_length
+                config.dataset.paths,
+                clip_length_in_frames=config.dataset.clip_length,
+                frames_between_clips=config.dataset.clip_length
             )
 
-            self.clips = self.build_clips(video_clips, self.preprocess_transforms, config.dataset.clip_dest_dir)
+            self.clips = self.build_clips(video_clips)
 
         if mode in ['train', 'val']:
             total_clips = len(self.clips)
@@ -79,15 +79,16 @@ class SteamboatWillieDataset(Dataset):
         elif mode == 'full':
             self.clip_indices = list(range(len(self.clips)))
 
-    def build_clips(self, video_clips, clip_dest_dir):
+    def build_clips(self, video_clips):
         """
         Build set of binary files to store processed video clips
         returns dict of clip_idx -> mmapped clips
         """
         clip_paths = {}
 
-        if not os.path.exists(clip_dest_dir):
-            os.makedirs(clip_dest_dir)
+        print(video_clips)
+        if not os.path.exists(self.config.dataset.clip_dest_dir):
+            os.makedirs(self.config.dataset.clip_dest_dir)
 
         for idx in tqdm(range(video_clips.num_clips()), desc='Creating clip .bin files'):
             # transform clips and write to mmap file
@@ -95,7 +96,7 @@ class SteamboatWillieDataset(Dataset):
             clip = self.preprocess_transforms(clip)
             clip_np = clip.numpy().astype(np.uint8)
 
-            mmapped_file_path = os.path.join(clip_dest_dir, f'clip_{idx}.bin')
+            mmapped_file_path = os.path.join(self.config.dataset.clip_dest_dir, f'clip_{idx}.bin')
             fp = np.memmap(mmapped_file_path, dtype='uint8', mode='w+', shape=clip_np.shape)
             fp[:] = clip_np[:]
             fp.flush()

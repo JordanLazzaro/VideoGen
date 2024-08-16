@@ -1,7 +1,7 @@
 from torch import nn
 from torch.nn import functional as F
 
-from modules import Upsample3d,ResBlock3d
+from videogen.models.modules import Upsample3d,ResBlock3d
 
 
 class SuperResolution(nn.Module):

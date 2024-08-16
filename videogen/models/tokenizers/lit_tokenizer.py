@@ -1,32 +1,24 @@
 import torch
 import pytorch_lightning as pl
-from collections import OrderedDict
 from typing import Dict
 
+from videogen.config import Config
 from videogen.models.tokenizers.discriminators.discriminator import Discriminator
 from videogen.models.tokenizers.tokenizer import Tokenizer
-from videogen.config import Config
-
-from utils import (
-    pick_random_frames,
-    pick_random_tubelets,
-    adopt_weight,
-    log_disc_patches,
-    log_val_clips
-)
+from videogen.models.tokenizers.utils import adopt_weight, log_disc_patches, log_val_clips, pick_random_frames, pick_random_tubelets
 
 
 class LitTokenizer(pl.LightningModule):
-    def __init__(self, config: Config, tokenizer: Tokenizer):
+    def __init__(self, tokenizer: Tokenizer, config: Config):
         super().__init__()
         self.automatic_optimization = False
-
+        print(type(config.tokenizer.training.tokenizer_lr))
         self.config = config
         self.tokenizer = tokenizer
         self.discriminator = None
 
-        self.tokenizer_lr = config.training.tokenizer_lr
-        self.disc_lr = config.training.disc_lr
+        self.tokenizer_lr = config.tokenizer.training.tokenizer_lr
+        self.disc_lr = config.tokenizer.training.disc_lr
 
     def add_discriminator(self, discriminator: Discriminator) -> None:
         if self.config.compile:
@@ -65,23 +57,23 @@ class LitTokenizer(pl.LightningModule):
         gen_optimizer = torch.optim.AdamW(
             self.tokenizer.parameters(),
             lr=self.tokenizer_lr,
-            betas=self.config.training.betas,
-            weight_decay=self.config.training.weight_decay
+            betas=self.config.tokenizer.training.betas,
+            weight_decay=self.config.tokenizer.training.weight_decay
         )
 
         disc_optimizer = torch.optim.AdamW(
             self.discriminator.parameters(),
             lr=self.disc_lr,
-            betas=self.config.training.betas,
-            weight_decay=self.config.training.weight_decay
+            betas=self.config.tokenizer.training.betas,
+            weight_decay=self.config.tokenizer.training.weight_decay
         ) if self.discriminator is not None else None
 
-        if self.config.training.use_lr_schedule:
+        if self.config.tokenizer.training.use_lr_schedule:
             gen_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                gen_optimizer, T_max=self.config.training_steps)
+                gen_optimizer, T_max=self.config.tokenizer.training_steps)
 
             disc_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                disc_optimizer, T_max=self.config.training_steps) if disc_optimizer is not None else None
+                disc_optimizer, T_max=self.config.tokenizer.training_steps) if disc_optimizer is not None else None
 
             return (
                 { 'optimizer': gen_optimizer, 'lr_scheduler': gen_scheduler },
