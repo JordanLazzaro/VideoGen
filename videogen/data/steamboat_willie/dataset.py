@@ -1,7 +1,7 @@
 import os
 import torch
 import numpy as np
-import tqdm
+from tqdm import tqdm
 
 from torch.nn import functional as F
 from torch.utils.data import Dataset
@@ -53,7 +53,7 @@ class SteamboatWillieDataset(Dataset):
         if self.mode == 'train' and augmentation:
             self.postprocess_transforms.transforms.append(RandomHorizontalFlipVideo(p=0.5))
 
-        if os.path.exists(config.dataset.clip_dest_dir):
+        if os.path.exists(config.dataset.clip_dest_dir) and os.listdir(config.dataset.clip_dest_dir):
             self.clips = self.load_existing_clips(config.dataset.clip_dest_dir)
         else:
             video_clips = VideoClips(

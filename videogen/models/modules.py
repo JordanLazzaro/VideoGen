@@ -1,7 +1,6 @@
 import torch
 from torch import nn, einsum
 from torch.nn import functional as F
-from torch.cuda.amp import autocast
 from einops import rearrange, repeat
 
 
@@ -430,7 +429,7 @@ class FSQ(nn.Module):
         codes_not_centered = (idxs // self.basis) % self.levels
         return self.scale_and_shift_inverse(codes_not_centered)
 
-    @autocast(enabled = False)
+    @torch.amp.autocast('cuda', enabled = False)
     def forward(self, z):
         if len(z.shape) == 5: # video
             B, C, T, H, W = z.shape

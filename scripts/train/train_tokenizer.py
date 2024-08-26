@@ -16,7 +16,6 @@ from videogen.models.tokenizers.tokenizer import Tokenizer
 
 def train(config: Dict[str, Any], kwargs: Dict[str, Any]):
     config = Config(config)
-    print(config.project.name)
 
     tokenizer = Tokenizer.get_tokenizer(config)
     lit_tokenizer = LitTokenizer(tokenizer, config)
@@ -71,7 +70,7 @@ def train(config: Dict[str, Any], kwargs: Dict[str, Any]):
         log_every_n_steps = 2
     )
 
-    trainer.fit(lit_tokenizer, data)
+    # trainer.fit(lit_tokenizer, data)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train your Tokenizers here!")

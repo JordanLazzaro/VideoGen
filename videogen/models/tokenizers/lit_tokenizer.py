@@ -74,16 +74,20 @@ class LitTokenizer(pl.LightningModule):
 
             disc_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                 disc_optimizer, T_max=self.config.tokenizer.training_steps) if disc_optimizer is not None else None
-
+            if self.discriminator is not None:
+                return (
+                    { 'optimizer': gen_optimizer, 'lr_scheduler': gen_scheduler },
+                    { 'optimizer': disc_optimizer, 'lr_scheduler': disc_scheduler }
+                )
+            else:
+                return { 'optimizer': gen_optimizer, 'lr_scheduler': gen_scheduler }
+        if self.discriminator is not None:
             return (
-                { 'optimizer': gen_optimizer, 'lr_scheduler': gen_scheduler },
-                { 'optimizer': disc_optimizer, 'lr_scheduler': disc_scheduler }
+                { 'optimizer': gen_optimizer },
+                { 'optimizer': disc_optimizer }
             )
-
-        return (
-            { 'optimizer': gen_optimizer },
-            { 'optimizer': disc_optimizer }
-        )
+        else:
+            return { 'optimizer': gen_optimizer }
     
     def tokenizer_train_step(self, x, out) -> None:
         opt_g, _ = self.optimizers()

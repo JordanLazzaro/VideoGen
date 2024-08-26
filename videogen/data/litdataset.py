@@ -16,15 +16,15 @@ class LitDataModule(pl.LightningDataModule):
     def train_dataloader(self):
         return torch.utils.data.DataLoader(
             self.train_dataset,
-            batch_size=self.config.training.batch_size,
+            batch_size=self.config.tokenizer.training.batch_size,
             shuffle=True,
-            num_workers=self.config.training.num_workers
+            num_workers=self.config.tokenizer.training.num_workers
         )
 
     def val_dataloader(self):
         return torch.utils.data.DataLoader(
             self.val_dataset,
-            batch_size=self.config.training.batch_size,
+            batch_size=self.config.tokenizer.training.batch_size,
             shuffle=False,
-            num_workers=self.config.training.num_workers
+            num_workers=self.config.tokenizer.training.num_workers
         )
