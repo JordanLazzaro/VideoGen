@@ -86,7 +86,6 @@ class SteamboatWillieDataset(Dataset):
         """
         clip_paths = {}
 
-        print(video_clips)
         if not os.path.exists(self.config.dataset.clip_dest_dir):
             os.makedirs(self.config.dataset.clip_dest_dir)
 

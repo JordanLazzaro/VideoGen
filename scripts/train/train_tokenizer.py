@@ -26,49 +26,51 @@ def train(config: Dict[str, Any], kwargs: Dict[str, Any]):
 
     data = LitDataModule(config)
 
-    logger = None
-    if kwargs['logging']:
-        wandb.init(
-            project=config.project.wandb_project,
-            config=config,
-            resume=kwargs['resume']
-        )
-        logger = WandbLogger(
-            project=config.wandb_project,
-            log_model=True
-        )
-        logger.watch(lit_tokenizer, log="all")
+    data.setup()
 
-    callbacks = []
-    if kwargs['monitor_lr']:
-        callbacks.append(LearningRateMonitor(logging_interval='step'))
-    if kwargs['save_checkpoint']:
-        callbacks.append(ModelCheckpoint(
-            dirpath        = config.tokenizer.training.checkpoint_dir,
-            filename       = 'magvit2-',
-            every_n_epochs = 5,
-            save_top_k     = config.tokenizer.training.save_top_k,
-            monitor        = 'val/rec_loss',
-            mode           = 'min'
-        ))
-    if kwargs['early_stopping']:
-        callbacks.append(EarlyStopping(
-            monitor      = 'val/rec_loss',
-            min_delta    = 0.000001,
-            patience     = 100,
-            verbose      = True, 
-            check_finite = True
-        ))
+    # logger = None
+    # if kwargs['logging']:
+    #     wandb.init(
+    #         project=config.project.wandb_project,
+    #         config=config,
+    #         resume=kwargs['resume']
+    #     )
+    #     logger = WandbLogger(
+    #         project=config.wandb_project,
+    #         log_model=True
+    #     )
+    #     logger.watch(lit_tokenizer, log="all")
 
-    trainer = pl.Trainer(
-        max_epochs        = config.tokenizer.training.max_epochs,
-        devices           = config.tokenizer.training.num_gpus,
-        accelerator       = "gpu",
-        precision         = config.tokenizer.training.precision,
-        logger            = logger,
-        callbacks         = callbacks,
-        log_every_n_steps = 2
-    )
+    # callbacks = []
+    # if kwargs['monitor_lr']:
+    #     callbacks.append(LearningRateMonitor(logging_interval='step'))
+    # if kwargs['save_checkpoint']:
+    #     callbacks.append(ModelCheckpoint(
+    #         dirpath        = config.tokenizer.training.checkpoint_dir,
+    #         filename       = 'magvit2-',
+    #         every_n_epochs = 5,
+    #         save_top_k     = config.tokenizer.training.save_top_k,
+    #         monitor        = 'val/rec_loss',
+    #         mode           = 'min'
+    #     ))
+    # if kwargs['early_stopping']:
+    #     callbacks.append(EarlyStopping(
+    #         monitor      = 'val/rec_loss',
+    #         min_delta    = 0.000001,
+    #         patience     = 100,
+    #         verbose      = True, 
+    #         check_finite = True
+    #     ))
+
+    # trainer = pl.Trainer(
+    #     max_epochs        = config.tokenizer.training.max_epochs,
+    #     devices           = config.tokenizer.training.num_gpus,
+    #     accelerator       = "gpu",
+    #     precision         = config.tokenizer.training.precision,
+    #     logger            = logger,
+    #     callbacks         = callbacks,
+    #     log_every_n_steps = 2
+    # )
 
     # trainer.fit(lit_tokenizer, data)
 

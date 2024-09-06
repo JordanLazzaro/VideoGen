@@ -12,7 +12,6 @@ class LitTokenizer(pl.LightningModule):
     def __init__(self, tokenizer: Tokenizer, config: Config):
         super().__init__()
         self.automatic_optimization = False
-        print(type(config.tokenizer.training.tokenizer_lr))
         self.config = config
         self.tokenizer = tokenizer
         self.discriminator = None

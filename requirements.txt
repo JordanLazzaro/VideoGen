@@ -5,8 +5,8 @@ matplotlib==3.5.1
 numpy==1.25.2
 pytorch_lightning==2.3.3
 PyYAML==6.0.1
-torch==2.0.1
-torchvision==0.15.2
+torch==2.4.1
+torchvision==0.19.1
 tqdm==4.66.1
 wandb==0.17.5
 av==12.3.0
