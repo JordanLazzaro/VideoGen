@@ -26,7 +26,7 @@ def train(model_config: Dict[str, Any], data_config: Dict[str, Any], kwargs: Dic
     #     discriminator = Discriminator.get_discriminator(model_config)
     #     lit_tokenizer.add_discriminator(discriminator)
 
-    data = LitDataModule(data_config)
+    data = LitDataModule(model_config, data_config)
 
     data.setup()
 
