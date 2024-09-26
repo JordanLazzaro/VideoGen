@@ -41,25 +41,25 @@ class SteamboatWillieDataset(Dataset):
                 Grayscale(num_output_channels=1),          # Convert to grayscale
                 Lambda(lambda x: x.permute(1, 0, 2, 3)),   # (T, C, H, W) to (C, T, H, W) for Conv3d
                 CenterCrop((480, 575)),                    # Center crop to remove virtical bars
-                Resize((config.dataset.img_size, config.dataset.img_size), interpolation=InterpolationMode.BICUBIC)
+                Resize((config.img_size, config.img_size), interpolation=InterpolationMode.BICUBIC)
         ])
 
         self.postprocess_transforms = Compose([
             Lambda(lambda x: x / 255.),
-            Lambda(lambda x: x.view(-1, config.dataset.clip_length, config.dataset.img_size, config.dataset.img_size)),
-            Lambda(lambda x: F.interpolate(x, size=config.dataset.image_size, mode='bicubic', align_corners=False) if config.dataset.native_image_size is not None else x)
+            Lambda(lambda x: x.view(-1, config.clip_length, config.img_size, config.img_size)),
+            Lambda(lambda x: F.interpolate(x, size=config.image_size, mode='bicubic', align_corners=False) if config.native_image_size is not None else x)
         ])
 
         if self.mode == 'train' and augmentation:
             self.postprocess_transforms.transforms.append(RandomHorizontalFlipVideo(p=0.5))
 
-        if os.path.exists(config.dataset.clip_dest_dir) and os.listdir(config.dataset.clip_dest_dir):
-            self.clips = self.load_existing_clips(config.dataset.clip_dest_dir)
+        if os.path.exists(config.clip_dest_dir) and os.listdir(config.clip_dest_dir):
+            self.clips = self.load_existing_clips(config.clip_dest_dir)
         else:
             video_clips = VideoClips(
-                config.dataset.paths,
-                clip_length_in_frames=config.dataset.clip_length,
-                frames_between_clips=config.dataset.clip_length
+                [ config.raw_path ],
+                clip_length_in_frames=config.clip_length,
+                frames_between_clips=config.clip_length
             )
 
             self.clips = self.build_clips(video_clips)
@@ -86,8 +86,8 @@ class SteamboatWillieDataset(Dataset):
         """
         clip_paths = {}
 
-        if not os.path.exists(self.config.dataset.clip_dest_dir):
-            os.makedirs(self.config.dataset.clip_dest_dir)
+        if not os.path.exists(self.config.clip_dest_dir):
+            os.makedirs(self.config.clip_dest_dir)
 
         for idx in tqdm(range(video_clips.num_clips()), desc='Creating clip .bin files'):
             # transform clips and write to mmap file
@@ -95,7 +95,7 @@ class SteamboatWillieDataset(Dataset):
             clip = self.preprocess_transforms(clip)
             clip_np = clip.numpy().astype(np.uint8)
 
-            mmapped_file_path = os.path.join(self.config.dataset.clip_dest_dir, f'clip_{idx}.bin')
+            mmapped_file_path = os.path.join(self.config.clip_dest_dir, f'clip_{idx}.bin')
             fp = np.memmap(mmapped_file_path, dtype='uint8', mode='w+', shape=clip_np.shape)
             fp[:] = clip_np[:]
             fp.flush()

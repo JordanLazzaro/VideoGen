@@ -161,4 +161,4 @@ cython_debug/
 
 wandb
 
-videogen/data/*
+data/*
