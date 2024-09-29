@@ -19,76 +19,74 @@ def train(model_config: Dict[str, Any], data_config: Dict[str, Any], kwargs: Dic
     model_config = Config(model_config)
     data_config = Config(data_config)
 
-    # tokenizer = Tokenizer.get_tokenizer(model_config)
-    # lit_tokenizer = LitTokenizer(tokenizer, model_config)
+    tokenizer = Tokenizer.get_tokenizer(model_config)
+    lit_tokenizer = LitTokenizer(tokenizer, model_config)
     
-    # if model_config.discriminator is not None:
-    #     discriminator = Discriminator.get_discriminator(model_config)
-    #     lit_tokenizer.add_discriminator(discriminator)
+    if model_config.discriminator is not None:
+        discriminator = Discriminator.get_discriminator(model_config)
+        lit_tokenizer.add_discriminator(discriminator)
 
     data = LitDataModule(model_config, data_config)
 
-    data.setup()
+    logger = None
+    if kwargs['logging']:
+        wandb.init(
+            project=model_config.project.wandb_project,
+            config=model_config,
+            resume=kwargs['resume']
+        )
+        logger = WandbLogger(
+            project=model_config.project.wandb_project,
+            log_model=True
+        )
+        logger.watch(lit_tokenizer, log="all")
 
-    # logger = None
-    # if kwargs['logging']:
-    #     wandb.init(
-    #         project=config.project.wandb_project,
-    #         config=config,
-    #         resume=kwargs['resume']
-    #     )
-    #     logger = WandbLogger(
-    #         project=config.project.wandb_project,
-    #         log_model=True
-    #     )
-    #     logger.watch(lit_tokenizer, log="all")
+    callbacks = []
+    if kwargs['monitor_lr']:
+        callbacks.append(LearningRateMonitor(logging_interval='step'))
+    if kwargs['save_checkpoint']:
+        callbacks.append(
+            ModelCheckpoint(
+                dirpath        = model_config.tokenizer.training.checkpoint_dir,
+                filename       = 'vanilla-fsq-vae-',
+                every_n_epochs = 5,
+                save_top_k     = model_config.tokenizer.training.save_top_k,
+                monitor        = 'val/rec_loss',
+                mode           = 'min'
+            )
+        )
+    if kwargs['early_stopping']:
+        callbacks.append(
+            EarlyStopping(
+                monitor      = 'val/rec_loss',
+                min_delta    = 0.000001,
+                patience     = 100,
+                verbose      = True, 
+                check_finite = True
+            )
+        )
 
-    # callbacks = []
-    # if kwargs['monitor_lr']:
-    #     callbacks.append(LearningRateMonitor(logging_interval='step'))
-    # if kwargs['save_checkpoint']:
-    #     callbacks.append(
-    #         ModelCheckpoint(
-    #             dirpath        = config.tokenizer.training.checkpoint_dir,
-    #             filename       = 'magvit2-',
-    #             every_n_epochs = 5,
-    #             save_top_k     = config.tokenizer.training.save_top_k,
-    #             monitor        = 'val/rec_loss',
-    #             mode           = 'min'
-    #         )
-    #     )
-    # if kwargs['early_stopping']:
-    #     callbacks.append(
-    #         EarlyStopping(
-    #             monitor      = 'val/rec_loss',
-    #             min_delta    = 0.000001,
-    #             patience     = 100,
-    #             verbose      = True, 
-    #             check_finite = True
-    #         )
-    #     )
+    trainer = pl.Trainer(
+        max_epochs        = model_config.tokenizer.training.max_epochs,
+        devices           = model_config.tokenizer.training.num_gpus,
+        accelerator       = "gpu",
+        precision         = model_config.tokenizer.training.precision,
+        logger            = logger,
+        callbacks         = callbacks,
+        log_every_n_steps = 2
+    )
 
-    # trainer = pl.Trainer(
-    #     max_epochs        = config.tokenizer.training.max_epochs,
-    #     devices           = config.tokenizer.training.num_gpus,
-    #     accelerator       = "gpu",
-    #     precision         = config.tokenizer.training.precision,
-    #     logger            = logger,
-    #     callbacks         = callbacks,
-    #     log_every_n_steps = 2
-    # )
-
-    # trainer.fit(lit_tokenizer, data)
+    trainer.fit(lit_tokenizer, data)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train your Tokenizers here!")
     parser.add_argument('--model-config', type=str, required=True, help="Path to model config file")
     parser.add_argument('--data-config', type=str, required=True, help="Path to data config file")
-    # parser.add_argument('--logging', type=bool, default=True, help="Log to wandb")
-    # parser.add_argument('--monitor_lr', type=bool, default=True, help="Monitor Learning Rate (on wandb)")
-    # parser.add_argument('--save_checkpoint', type=bool, default=True, help="Save training state of lowest val loss")
-    # parser.add_argument('--early_stopping', type=bool, default=True, help="Stop training after too little progress")
-    # parser.add_argument('--resume', type=bool, default=False, help="Resume training from a previous checkpoint")
+    parser.add_argument('--logging', type=bool, default=True, help="Log to wandb")
+    parser.add_argument('--monitor_lr', type=bool, default=True, help="Monitor Learning Rate (on wandb)")
+    parser.add_argument('--save_checkpoint', type=bool, default=True, help="Save training state of lowest val loss")
+    parser.add_argument('--early_stopping', type=bool, default=True, help="Stop training after too little progress")
+    parser.add_argument('--resume', type=bool, default=False, help="Resume training from a previous checkpoint")
     
     args = parser.parse_args()
 

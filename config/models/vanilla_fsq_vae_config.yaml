@@ -42,5 +42,5 @@ tokenizer:
     use_lr_schedule: false
     weight_decay: 0.0
     save_top_k: 2
-    checkpoint_dir: 'VideoGen/videogen/models/tokenizers/vanilla_fsq_vae/'
+    checkpoint_dir: '/models/tokenizers/vanilla_fsq_vae/'
     checkpoint_path: None

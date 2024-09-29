@@ -32,7 +32,7 @@ class AdaptiveGroupNorm(nn.Module):
         )
     
     def forward(self, x):
-        self.group_norm(x)
+        return self.group_norm(x)
 
 
 class CausalConv3d(nn.Module):
@@ -180,7 +180,8 @@ class ResBlock3d(nn.Module):
                 in_channels  = in_channels,
                 out_channels = out_channels,
                 kernel_size  = kernel_size,
-                stride       = (1,1,1)
+                stride       = (1,1,1),
+                padding      = (1,1,1)
             ),
             AdaptiveGroupNorm(out_channels),
             nn.SiLU(),
@@ -194,13 +195,17 @@ class ResBlock3d(nn.Module):
                 in_channels  = out_channels,
                 out_channels = out_channels,
                 kernel_size  = kernel_size,
-                stride       = (1,1,1)
+                stride       = (1,1,1),
+                padding      = (1,1,1)
             ),
         )
 
     def forward(self, x):
-        out = self.block(x) + self.identity(x)
-        return out
+        identity = self.identity(x)
+        block = self.block(x)
+        print(f'identity: {identity.shape}')
+        print(f'block: {block.shape}')
+        return identity + block
     
 
 class ResBlockDown2d(nn.Module):

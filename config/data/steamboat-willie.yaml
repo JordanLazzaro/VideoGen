@@ -1,6 +1,6 @@
 name: steamboat-willie
-raw_path: 'VideoGen/data/steamboat_willie/SteamboatWillie.mp4'
+raw_path: 'data/steamboat_willie/SteamboatWillie.mp4'
 clip_length: 16
 img_size: 128
-clip_dest_dir: 'VideoGen/data/steamboat_willie/clips'
+clip_dest_dir: 'data/steamboat_willie/clips'
 num_workers: 4
