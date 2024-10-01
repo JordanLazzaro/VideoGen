@@ -203,8 +203,6 @@ class ResBlock3d(nn.Module):
     def forward(self, x):
         identity = self.identity(x)
         block = self.block(x)
-        print(f'identity: {identity.shape}')
-        print(f'block: {block.shape}')
         return identity + block
     
 
@@ -359,7 +357,8 @@ class Upsample3d(nn.Module):
         ) if causal else nn.Conv3d(
             in_channels  = in_channels,
             out_channels = out_channels * cm,
-            kernel_size  = (3,3,3)
+            kernel_size  = (3,3,3),
+            padding      = (1,1,1)
         )
         
         self.pixel_shuffle = PixelShuffle3d(
@@ -598,7 +597,8 @@ class EncoderBlock(nn.Module):
                 in_channels  = in_channels,
                 out_channels = out_channels,
                 kernel_size  = kernel_size,
-                stride       = stride
+                stride       = stride,
+                padding      = (1,1,1)
             ),
             nn.Sequential(*[
                 ResBlock3d(
@@ -629,11 +629,15 @@ class DecoderBlock(nn.Module):
         super().__init__()
         if space_only:
             stride = (1, 2, 2)
+            output_padding = (0, 1, 1)
         elif time_only:
             stride = (2, 1, 1)
+            output_padding = (1, 0, 0)
         else:
             stride = (2, 2, 2)
-        
+            output_padding = (1, 1, 1)
+        padding = ((kernel_size[0] - 1) // 2, (kernel_size[1] - 1) // 2, (kernel_size[2] - 1) // 2)
+
         self.block = nn.Sequential(
             nn.Sequential(*[
                 ResBlock3d(
@@ -655,7 +659,8 @@ class DecoderBlock(nn.Module):
                 out_channels   = out_channels,
                 kernel_size    = kernel_size,
                 stride         = stride,
-                output_padding = (stride[0]-1, stride[1]-1, stride[2]-1)
+                padding        = padding,
+                output_padding = output_padding
             )
         )
 

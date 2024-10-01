@@ -42,6 +42,8 @@ class FSQVAE(Tokenizer):
             causal              = config.tokenizer.decoder.causal
         )
 
+        self.config = config
+
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         return self.encoder(x)
 

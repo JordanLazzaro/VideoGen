@@ -1,11 +1,14 @@
 import torch
+import imageio
+import wandb
+import numpy as np
 import pytorch_lightning as pl
 from typing import Dict
 
 from videogen.config import Config
 from videogen.models.tokenizers.discriminators.discriminator import Discriminator
 from videogen.models.tokenizers.tokenizer import Tokenizer
-from videogen.models.tokenizers.utils import adopt_weight, log_disc_patches, log_val_clips, pick_random_frames, pick_random_tubelets
+from videogen.models.tokenizers.utils import adopt_weight, log_disc_patches, pick_random_frames, pick_random_tubelets
 
 
 class LitTokenizer(pl.LightningModule):
@@ -48,7 +51,7 @@ class LitTokenizer(pl.LightningModule):
         rec_loss = self.tokenizer.reconstruction_loss(out['x_hat'], x)
         self.log('val/rec_loss', rec_loss, prog_bar=True)
 
-        log_val_clips(x, out)
+        self.log_val_clips(x, out)
 
         return rec_loss
 
@@ -89,28 +92,31 @@ class LitTokenizer(pl.LightningModule):
             return { 'optimizer': gen_optimizer }
     
     def tokenizer_train_step(self, x, out) -> None:
-        opt_g, _ = self.optimizers()
+        if self.discriminator is not None:
+            opt_g = self.optimizers()[0]
+        else:
+            opt_g = self.optimizers()
 
         rec_loss = self.tokenizer.reconstruction_loss(out['x_hat'], x)
         self.log('train/rec_loss', rec_loss)
 
-        if self.config.loss.recon_loss_weight is not None:
-            rec_loss = rec_loss * self.config.loss.recon_loss_weight
+        if self.config.tokenizer.loss.recon_loss_weight is not None:
+            rec_loss = rec_loss * self.config.tokenizer.loss.recon_loss_weight
 
         if self.discriminator is not None:
             gen_loss_weight = adopt_weight(
-                self.config.discriminator.loss.gen_loss_weight,
+                self.config.tokenizer.discriminator.loss.gen_loss_weight,
                 self.current_epoch,
-                threshold=self.config.discriminator.loss.gen_loss_delay_epochs
+                threshold=self.config.tokenizer.discriminator.loss.gen_loss_delay_epochs
             )
 
             if gen_loss_weight is not None:
-                if self.config.discriminator.disc_type == 'tubelet':
+                if self.config.tokenizer.discriminator.disc_type == 'tubelet':
                     real, fake = pick_random_tubelets(
                         x, out['x_hat'], num_tubelets=self.config.discriminator.num_tubelets)
-                elif self.config.discriminator.disc_type == 'patch':
+                elif self.config.tokenizer.discriminator.disc_type == 'patch':
                     real, fake = pick_random_frames(
-                        x, out['x_hat'], num_frames=self.config.discriminator.num_frames)
+                        x, out['x_hat'], num_frames=self.config.tokenizer.discriminator.num_frames)
                 else:
                     raise ValueError('invalid discriminator type')
 
@@ -129,27 +135,27 @@ class LitTokenizer(pl.LightningModule):
         self.untoggle_optimizer(opt_g)
 
     def discriminator_train_step(self, x, out) -> None:
-        _, opt_d = self.optimizers()
+        opt_d = self.optimizers()[1]
         
         disc_loss_weight = adopt_weight(
-            self.config.discriminator.loss.disc_loss_weight,
+            self.config.tokenizer.discriminator.loss.disc_loss_weight,
             self.current_epoch,
-            threshold=self.config.discriminator.loss.disc_loss_delay_epochs
+            threshold=self.config.tokenizer.discriminator.loss.disc_loss_delay_epochs
         )
 
         if disc_loss_weight is not None:
-            if self.config.discriminator.disc_type == 'tubelet':
+            if self.config.tokenizer.discriminator.disc_type == 'tubelet':
                 real, fake = pick_random_tubelets(
                     x, out['x_hat'], num_tubelets=self.config.discriminator.num_tubelets)
 
-            elif self.config.discriminator.disc_type == 'patch':
+            elif self.config.tokenizer.discriminator.disc_type == 'patch':
                 real, fake = pick_random_frames(
-                    x, out['x_hat'], num_frames=self.config.discriminator.num_frames)
+                    x, out['x_hat'], num_frames=self.config.tokenizer.discriminator.num_frames)
                 log_disc_patches(real, fake)
             else:
                 raise ValueError('invalid discriminator type')
 
-            if self.config.grad_penalty_weight is not None:
+            if self.config.tokenizer.discriminator.grad_penalty_weight is not None:
                 real = real.requires_grad_()
 
             logits_real = self.discriminator.discriminate(real)
@@ -161,13 +167,13 @@ class LitTokenizer(pl.LightningModule):
             disc_loss = disc_loss_weight * self.discriminator.discriminator_loss(logits_real, logits_fake)
             self.log('train/disc_loss', disc_loss)
 
-            if self.config.grad_penalty_weight is not None:
+            if self.config.tokenizer.discriminator.grad_penalty_weight is not None:
                 grad_penalty = self.discriminator.gradient_penalty(real, logits_real)
                 self.log('train/grad_penalty', grad_penalty)
                 disc_loss = disc_loss + self.config.discriminator.loss.grad_penalty_weight * grad_penalty
                 self.log('train/disc_loss+grad_penalty', disc_loss)
 
-            if self.config.reg_loss_weight is not None:
+            if self.config.tokenizer.discriminator.reg_loss_weight is not None:
                 reg_loss = self.discriminator.regularization_loss(logits_real, logits_fake)
                 self.log('train/reg_loss', reg_loss)
                 disc_loss = disc_loss + self.config.discriminator.loss.reg_loss_weight * reg_loss.detach()
@@ -177,3 +183,40 @@ class LitTokenizer(pl.LightningModule):
             opt_d.step()
             opt_d.zero_grad()
             self.untoggle_optimizer(opt_d)
+
+    def log_val_clips(self, x, out, num_clips=2):
+        n_clips = min(x.size(0), num_clips)
+
+        for i in range(n_clips):
+            # extract the ith original and reconstructed clip
+            original_clip = x[i]  # (C, T, H, W)
+            reconstructed_clip = out['x_hat'][i]  # (C, T, H, W)
+
+            # convert tensors to numpy arrays and transpose to (T, H, W, C) for GIF creation
+            original_clip_np = original_clip.permute(1, 2, 3, 0).cpu().numpy()
+            reconstructed_clip_np = reconstructed_clip.permute(1, 2, 3, 0).cpu().numpy()
+
+            original_clip_np = (original_clip_np - original_clip_np.min()) / (original_clip_np.max() - original_clip_np.min())
+            reconstructed_clip_np = (reconstructed_clip_np - reconstructed_clip_np.min()) / (reconstructed_clip_np.max() - reconstructed_clip_np.min())
+
+            original_clip_np = (original_clip_np * 255).astype(np.uint8)
+            reconstructed_clip_np = (reconstructed_clip_np * 255).astype(np.uint8)
+
+            # grayscale videos need to be of shape (T, H, W)
+            if original_clip_np.shape[-1] == 1:
+                original_clip_np = original_clip_np.squeeze(-1)
+
+            if reconstructed_clip_np.shape[-1] == 1:
+                reconstructed_clip_np = reconstructed_clip_np.squeeze(-1)
+
+            # create GIFs for the original and reconstructed clips
+            original_gif_path = f'/tmp/original_clip_{i}.gif'
+            reconstructed_gif_path = f'/tmp/reconstructed_clip_{i}.gif'
+            imageio.mimsave(original_gif_path, original_clip_np, fps=10)
+            imageio.mimsave(reconstructed_gif_path, reconstructed_clip_np, fps=10)
+
+            # log the GIFs to wandb
+            self.logger.experiment.log({
+                f"val/original_clip_{i}": wandb.Video(original_gif_path, fps=10, format="gif", caption="Original"),
+                f"val/reconstructed_clip_{i}": wandb.Video(reconstructed_gif_path, fps=10, format="gif", caption="Reconstructed")
+            })

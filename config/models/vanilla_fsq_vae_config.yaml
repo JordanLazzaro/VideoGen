@@ -26,7 +26,6 @@ tokenizer:
     num_res_blocks: 1
     causal: false
   loss:
-    recon_loss_weight: None
     recon_loss_type: mse
   discriminator:
     None

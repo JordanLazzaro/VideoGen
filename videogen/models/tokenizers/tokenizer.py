@@ -18,11 +18,11 @@ class Tokenizer(nn.Module, ABC):
         pass
 
     @abstractmethod
-    def decode(self, x: torch.Tensor) -> torch.Tensor:
+    def decode(self, z_q: torch.Tensor) -> torch.Tensor:
         pass
 
     @abstractmethod
-    def reconstruction_loss(self, x_hat: torch.Tensor, x: torch.Tensor):
+    def reconstruction_loss(self, x_hat: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
         pass
 
     @staticmethod
