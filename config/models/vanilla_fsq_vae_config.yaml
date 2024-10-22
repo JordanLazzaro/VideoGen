@@ -27,6 +27,9 @@ tokenizer:
     causal: false
   loss:
     recon_loss_type: mse
+    aux_losses:
+      perceptual:
+        weight: 0.1
   discriminator:
     None
   compile: false

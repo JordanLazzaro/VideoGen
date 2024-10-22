@@ -18,6 +18,7 @@ class LitTokenizer(pl.LightningModule):
         self.config = config
         self.tokenizer = tokenizer
         self.discriminator = None
+        self.aux_losses = []
 
         self.tokenizer_lr = config.tokenizer.training.tokenizer_lr
         self.disc_lr = config.tokenizer.training.disc_lr
@@ -27,6 +28,9 @@ class LitTokenizer(pl.LightningModule):
             self.discriminator = torch.compile(discriminator)
         else:
             self.discriminator = discriminator
+
+    def add_aux_loss(self, loss: nn.Module) -> None:
+        self.aux_losses.append(loss)
 
     def configure_model(self) -> None:
         if self.config.compile:
@@ -103,6 +107,10 @@ class LitTokenizer(pl.LightningModule):
         if self.config.tokenizer.loss.recon_loss_weight is not None:
             rec_loss = rec_loss * self.config.tokenizer.loss.recon_loss_weight
 
+        total_loss = rec_loss
+        for aux_loss in self.aux_losses:
+            total_loss += aux_loss(out, x) # TODO: modify to account for aux_loss weight in config
+        
         if self.discriminator is not None:
             gen_loss_weight = adopt_weight(
                 self.config.tokenizer.discriminator.loss.gen_loss_weight,
@@ -123,9 +131,8 @@ class LitTokenizer(pl.LightningModule):
                 logits_fake = self.discriminator.discriminate(fake)
                 generator_loss = self.discriminator.generator_loss(logits_fake)
                 self.log('train/generator_loss', generator_loss)
-                rec_loss = rec_loss + gen_loss_weight * generator_loss
+                total_loss = total_loss + gen_loss_weight * generator_loss
 
-        total_loss = rec_loss
         self.log('train/total_loss', total_loss)
 
         self.toggle_optimizer(opt_g)
