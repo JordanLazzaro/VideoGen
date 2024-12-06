@@ -27,7 +27,7 @@ class AdaptiveGroupNorm(nn.Module):
     def __init__(self, num_channels):
         super().__init__()
         self.group_norm = nn.GroupNorm(
-            num_groups   = min(32, num_channels // 4),
+            num_groups   = min(8, num_channels // 4),
             num_channels = num_channels
         )
     
