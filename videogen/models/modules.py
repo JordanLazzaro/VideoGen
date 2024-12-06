@@ -568,7 +568,7 @@ class EMAVectorQuantization(nn.Module):
         }
     
 
-class EncoderBlock(nn.Module):
+class EncoderBlock3d(nn.Module):
     def __init__(
             self,
             in_channels,
@@ -614,7 +614,7 @@ class EncoderBlock(nn.Module):
         return self.block(x)
 
 
-class DecoderBlock(nn.Module):
+class DecoderBlock3d(nn.Module):
     def __init__(
             self,
             in_channels,
@@ -694,7 +694,7 @@ class Encoder(nn.Module):
         )
         
         self.space_downsample_blocks = nn.ModuleList([
-            EncoderBlock(
+            EncoderBlock3d(
                 in_channels    = channels[i],
                 out_channels   = channels[i+1],
                 num_res_blocks = num_res_blocks,
@@ -707,7 +707,7 @@ class Encoder(nn.Module):
         
         time_start_channel = num_space_downsamples
         self.time_downsample_blocks = nn.ModuleList([
-            EncoderBlock(
+            EncoderBlock3d(
                 in_channels    = channels[min(i+time_start_channel, len(channels)-1)],
                 out_channels   = channels[min(i+time_start_channel+1, len(channels)-1)],
                 num_res_blocks = num_res_blocks,
@@ -769,7 +769,7 @@ class Decoder(nn.Module):
         )
         
         self.time_upsample_blocks = nn.ModuleList([
-            DecoderBlock(
+            DecoderBlock3d(
                 in_channels    = channels[min(i, len(channels)-1)],
                 out_channels   = channels[min(i+1, len(channels)-1)],
                 num_res_blocks = num_res_blocks,
@@ -782,7 +782,7 @@ class Decoder(nn.Module):
         
         space_start_channel = num_time_upsamples
         self.space_upsample_blocks = nn.ModuleList([
-            DecoderBlock(
+            DecoderBlock3d(
                 in_channels    = channels[min(i+space_start_channel, len(channels)-1)],
                 out_channels   = channels[min(i+space_start_channel+1, len(channels)-1)],
                 num_res_blocks = num_res_blocks,

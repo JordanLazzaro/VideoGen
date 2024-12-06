@@ -12,7 +12,7 @@ from videogen.models.modules import (
     Encoder,
     Decoder
 )
-from videogen.models.tokenizers.tokenizer import Tokenizer
+from videogen.models.vae.tokenizer import Tokenizer
 
 
 class FSQVAE(Tokenizer):
