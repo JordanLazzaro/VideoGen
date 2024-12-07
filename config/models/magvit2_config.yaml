@@ -11,7 +11,7 @@ data:
   clip_dest_dir: ./clips
   num_workers: 4
 
-tokenizer:
+autoencoder:
   name: magvit2
   encoder:
     in_channels: 1

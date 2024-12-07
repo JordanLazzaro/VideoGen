@@ -5,7 +5,7 @@ from torch import nn
 import torch
 
 
-class Tokenizer(nn.Module, ABC):
+class Autoencoder(nn.Module, ABC):
     def __init__(self):
         super().__init__()
 
@@ -23,12 +23,12 @@ class Tokenizer(nn.Module, ABC):
 
     @abstractmethod
     def reconstruction_loss(self, x_hat: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
-        pass
+        pass # TODO: take in dict
 
     @staticmethod
-    def get_tokenizer(config: Config):
-        from videogen.models.tokenizers.models.magvit2 import MAGVIT2
-        from videogen.models.tokenizers.models.fsq_vae import FSQVAE
+    def get_autoencoder(config: Config):
+        from videogen.models.autoencoders.models.magvit2 import MAGVIT2
+        from videogen.models.autoencoders.models.fsq_vae import FSQVAE
         
         if config.tokenizer.name == 'vanilla-fsq-vae':
             return FSQVAE(config)

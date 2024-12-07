@@ -1,7 +1,7 @@
 project:
   wandb_project: SteamboatWillie Vanilla FSQ-VAE
 
-tokenizer:
+autoencoder:
   name: vanilla-fsq-vae
   encoder:
     in_channels: 1

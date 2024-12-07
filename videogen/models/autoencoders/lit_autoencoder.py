@@ -6,22 +6,23 @@ import pytorch_lightning as pl
 from typing import Dict
 
 from videogen.config import Config
-from videogen.models.tokenizers.discriminators.discriminator import Discriminator
-from videogen.models.tokenizers.tokenizer import Tokenizer
-from videogen.models.tokenizers.utils import adopt_weight, log_disc_patches, pick_random_frames, pick_random_tubelets
+from videogen.models.autoencoders.discriminators.discriminator import Discriminator
+from videogen.models.autoencoders.autoencoder import Autoencoder
+from videogen.models.autoencoders.utils import adopt_weight, log_disc_patches, pick_random_frames, pick_random_tubelets
 
 
-class LitTokenizer(pl.LightningModule):
-    def __init__(self, tokenizer: Tokenizer, config: Config):
+class LitAutoencoder(pl.LightningModule):
+    def __init__(self, autoencoder: Autoencoder, config: Config):
         super().__init__()
         self.automatic_optimization = False
+        
         self.config = config
-        self.tokenizer = tokenizer
+        self.autoencoder = autoencoder
         self.discriminator = None
         self.aux_losses = []
 
-        self.tokenizer_lr = config.tokenizer.training.tokenizer_lr
-        self.disc_lr = config.tokenizer.training.disc_lr
+        self.autoencoder_lr = config.autoencoder.training.autoencoder_lr
+        self.disc_lr = config.autoencoder.training.disc_lr
 
     def add_discriminator(self, discriminator: Discriminator) -> None:
         if self.config.compile:
@@ -34,16 +35,16 @@ class LitTokenizer(pl.LightningModule):
 
     def configure_model(self) -> None:
         if self.config.compile:
-            self.tokenizer = torch.compile(self.tokenizer)
+            self.autoencoder = torch.compile(self.autoencoder)
 
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
-        return self.tokenizer(x)
+        return self.autoencoder(x)
     
     def training_step(self, batch):
         x = batch
         out = self(x)
 
-        self.tokenizer_train_step(x, out)
+        self.autoencoder_train_step(x, out)
         
         if self.discriminator is not None:
             self.discriminator_train_step(x, out)
@@ -52,7 +53,7 @@ class LitTokenizer(pl.LightningModule):
         x = batch
         out = self(x)
 
-        rec_loss = self.tokenizer.reconstruction_loss(out['x_hat'], x)
+        rec_loss = self.autoencoder.reconstruction_loss(out['x_hat'], x)
         self.log('val/rec_loss', rec_loss, prog_bar=True)
 
         self.log_val_clips(x, out)
@@ -61,25 +62,25 @@ class LitTokenizer(pl.LightningModule):
 
     def configure_optimizers(self):
         gen_optimizer = torch.optim.AdamW(
-            self.tokenizer.parameters(),
+            self.autoencoder.parameters(),
             lr=self.tokenizer_lr,
-            betas=self.config.tokenizer.training.betas,
-            weight_decay=self.config.tokenizer.training.weight_decay
+            betas=self.config.autoencoder.training.betas,
+            weight_decay=self.config.autoencoder.training.weight_decay
         )
 
         disc_optimizer = torch.optim.AdamW(
             self.discriminator.parameters(),
             lr=self.disc_lr,
-            betas=self.config.tokenizer.training.betas,
-            weight_decay=self.config.tokenizer.training.weight_decay
+            betas=self.config.autoencoder.training.betas,
+            weight_decay=self.config.autoencoder.training.weight_decay
         ) if self.discriminator is not None else None
 
-        if self.config.tokenizer.training.use_lr_schedule:
+        if self.config.autoencoder.training.use_lr_schedule:
             gen_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                gen_optimizer, T_max=self.config.tokenizer.training_steps)
+                gen_optimizer, T_max=self.config.autoencoder.training_steps)
 
             disc_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                disc_optimizer, T_max=self.config.tokenizer.training_steps) if disc_optimizer is not None else None
+                disc_optimizer, T_max=self.config.autoencoder.training_steps) if disc_optimizer is not None else None
             if self.discriminator is not None:
                 return (
                     { 'optimizer': gen_optimizer, 'lr_scheduler': gen_scheduler },
@@ -95,17 +96,17 @@ class LitTokenizer(pl.LightningModule):
         else:
             return { 'optimizer': gen_optimizer }
     
-    def tokenizer_train_step(self, x, out) -> None:
+    def autoencoder_train_step(self, x, out) -> None:
         if self.discriminator is not None:
             opt_g = self.optimizers()[0]
         else:
             opt_g = self.optimizers()
 
-        rec_loss = self.tokenizer.reconstruction_loss(out['x_hat'], x)
+        rec_loss = self.autoencoder.reconstruction_loss(out['x_hat'], x) # TODO: take in dict + change to '.loss(...)'
         self.log('train/rec_loss', rec_loss)
 
-        if self.config.tokenizer.loss.recon_loss_weight is not None:
-            rec_loss = rec_loss * self.config.tokenizer.loss.recon_loss_weight
+        if self.config.autoencoder.loss.recon_loss_weight is not None:
+            rec_loss = rec_loss * self.config.autoencoder.loss.recon_loss_weight
 
         total_loss = rec_loss
         for aux_loss in self.aux_losses:
@@ -113,18 +114,18 @@ class LitTokenizer(pl.LightningModule):
         
         if self.discriminator is not None:
             gen_loss_weight = adopt_weight(
-                self.config.tokenizer.discriminator.loss.gen_loss_weight,
+                self.config.autoencoder.discriminator.loss.gen_loss_weight,
                 self.current_epoch,
-                threshold=self.config.tokenizer.discriminator.loss.gen_loss_delay_epochs
+                threshold=self.config.autoencoder.discriminator.loss.gen_loss_delay_epochs
             )
 
             if gen_loss_weight is not None:
-                if self.config.tokenizer.discriminator.disc_type == 'tubelet':
+                if self.config.autoencoder.discriminator.disc_type == 'tubelet':
                     real, fake = pick_random_tubelets(
                         x, out['x_hat'], num_tubelets=self.config.discriminator.num_tubelets)
-                elif self.config.tokenizer.discriminator.disc_type == 'patch':
+                elif self.config.autoencoder.discriminator.disc_type == 'patch':
                     real, fake = pick_random_frames(
-                        x, out['x_hat'], num_frames=self.config.tokenizer.discriminator.num_frames)
+                        x, out['x_hat'], num_frames=self.config.autoencoder.discriminator.num_frames)
                 else:
                     raise ValueError('invalid discriminator type')
 
@@ -145,24 +146,24 @@ class LitTokenizer(pl.LightningModule):
         opt_d = self.optimizers()[1]
         
         disc_loss_weight = adopt_weight(
-            self.config.tokenizer.discriminator.loss.disc_loss_weight,
+            self.config.autoencoder.discriminator.loss.disc_loss_weight,
             self.current_epoch,
-            threshold=self.config.tokenizer.discriminator.loss.disc_loss_delay_epochs
+            threshold=self.config.autoencoder.discriminator.loss.disc_loss_delay_epochs
         )
 
         if disc_loss_weight is not None:
-            if self.config.tokenizer.discriminator.disc_type == 'tubelet':
+            if self.config.autoencoder.discriminator.disc_type == 'tubelet':
                 real, fake = pick_random_tubelets(
                     x, out['x_hat'], num_tubelets=self.config.discriminator.num_tubelets)
 
-            elif self.config.tokenizer.discriminator.disc_type == 'patch':
+            elif self.config.autoencoder.discriminator.disc_type == 'patch':
                 real, fake = pick_random_frames(
-                    x, out['x_hat'], num_frames=self.config.tokenizer.discriminator.num_frames)
+                    x, out['x_hat'], num_frames=self.config.autoencoder.discriminator.num_frames)
                 log_disc_patches(real, fake)
             else:
                 raise ValueError('invalid discriminator type')
 
-            if self.config.tokenizer.discriminator.grad_penalty_weight is not None:
+            if self.config.autoencoder.discriminator.grad_penalty_weight is not None:
                 real = real.requires_grad_()
 
             logits_real = self.discriminator.discriminate(real)
@@ -174,13 +175,13 @@ class LitTokenizer(pl.LightningModule):
             disc_loss = disc_loss_weight * self.discriminator.discriminator_loss(logits_real, logits_fake)
             self.log('train/disc_loss', disc_loss)
 
-            if self.config.tokenizer.discriminator.grad_penalty_weight is not None:
+            if self.config.autoencoder.discriminator.grad_penalty_weight is not None:
                 grad_penalty = self.discriminator.gradient_penalty(real, logits_real)
                 self.log('train/grad_penalty', grad_penalty)
                 disc_loss = disc_loss + self.config.discriminator.loss.grad_penalty_weight * grad_penalty
                 self.log('train/disc_loss+grad_penalty', disc_loss)
 
-            if self.config.tokenizer.discriminator.reg_loss_weight is not None:
+            if self.config.autoencoder.discriminator.reg_loss_weight is not None:
                 reg_loss = self.discriminator.regularization_loss(logits_real, logits_fake)
                 self.log('train/reg_loss', reg_loss)
                 disc_loss = disc_loss + self.config.discriminator.loss.reg_loss_weight * reg_loss.detach()
