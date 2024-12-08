@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from typing import Dict
 from itertools import zip_longest
 from einops import rearrange
 from torch.autograd import grad as torch_grad
@@ -53,7 +54,7 @@ class FSQVAE(Autoencoder):
     def decode(self, z_q: torch.Tensor) -> torch.Tensor:
         return self.decoder(z_q)
     
-    def reconstruction_loss(self, x_hat: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+    def loss(self, output: Dict) -> torch.Tensor:
         if self.config.autoencoder.loss.recon_loss_type == 'mae':
             return F.l1_loss(x_hat, x)
         elif self.config.autoencoder.loss.recon_loss_type == 'mse':
@@ -66,3 +67,9 @@ class FSQVAE(Autoencoder):
         z_q = self.quantize(z)
         x_hat = self.decode(z_q)
         return { 'z': z, 'z_q': z_q, 'x_hat': x_hat }
+
+    def add_discriminator(self):
+        pass
+
+    def add_aux_loss(self):
+        pass

@@ -18,12 +18,20 @@ class Autoencoder(nn.Module, ABC):
         pass
 
     @abstractmethod
-    def decode(self, z_q: torch.Tensor) -> torch.Tensor:
+    def decode(self, z: torch.Tensor) -> torch.Tensor:
         pass
 
     @abstractmethod
-    def reconstruction_loss(self, x_hat: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
-        pass # TODO: take in dict
+    def loss(self, output: Dict) -> torch.Tensor:
+        pass
+
+    @abstractmethod
+    def add_discriminator(self, discriminator: Discriminator):
+        pass
+
+    @abstractmethod
+    def add_aux_loss(self, aux_loss):
+        pass
 
     @staticmethod
     def get_autoencoder(config: Config):

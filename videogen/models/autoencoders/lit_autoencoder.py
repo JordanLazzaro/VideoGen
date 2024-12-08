@@ -53,7 +53,8 @@ class LitAutoencoder(pl.LightningModule):
         x = batch
         out = self(x)
 
-        rec_loss = self.autoencoder.reconstruction_loss(out['x_hat'], x)
+        # rec_loss = self.autoencoder.reconstruction_loss(out['x_hat'], x)
+        rec_loss = self.autoencoder.loss(out)
         self.log('val/rec_loss', rec_loss, prog_bar=True)
 
         self.log_val_clips(x, out)
@@ -102,7 +103,7 @@ class LitAutoencoder(pl.LightningModule):
         else:
             opt_g = self.optimizers()
 
-        rec_loss = self.autoencoder.reconstruction_loss(out['x_hat'], x) # TODO: take in dict + change to '.loss(...)'
+        loss = self.autoencoder.loss(out) # TODO: take in dict + change to '.loss(...)'
         self.log('train/rec_loss', rec_loss)
 
         if self.config.autoencoder.loss.recon_loss_weight is not None:
