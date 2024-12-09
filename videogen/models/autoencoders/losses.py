@@ -4,7 +4,7 @@ from torch import nn
 
 
 class BaseLoss(nn.Module):
-    def __init__(self, name, weight=1.0):
+    def __init__(self, name, weight: float = 1.0):
         super().__init__()
         self.name = name
         self.weight = weight
@@ -14,7 +14,7 @@ class BaseLoss(nn.Module):
 
 
 class ReconstructionLoss(BaseLoss):
-    def __init__(self, weight=1.0, recon_loss_type='mse'):
+    def __init__(self, weight: float = 1.0, recon_loss_type: str = 'mse'):
         super().__init__(name='reconstruction', weight=weight)
         self.recon_loss_type = recon_loss_type
 
@@ -28,7 +28,7 @@ class ReconstructionLoss(BaseLoss):
 
 
 class KLDLoss(BaseLoss):
-    def __init__(self, weight=1.0):
+    def __init__(self, weight: float = 1.0):
         super().__init__(name='kld', weight=weight)
 
     def forward(self, mu: torch.Tensor, logvar: torch.Tensor):
@@ -42,7 +42,7 @@ class PerceptualLoss(BaseLoss):
     """
     Perceptual loss using VGG16 feature maps
     """
-    def __init__(self, weight=1.0, model_name="vgg16"):
+    def __init__(self, weight: float = 1.0, model_name: str = "vgg16"):
         super().__init__(name='perceptual', weight=weight)
         
         vgg = models.vgg16(pretrained=True).features
@@ -86,20 +86,74 @@ class PerceptualLoss(BaseLoss):
         return loss
 
 
-class AdversarialGenLoss(BaseLoss):
-    def __init__(self, weight=1.0, discriminator=None):
-        super().__init__(name='adversarial-gen', weight=weight)
-        # The discriminator is passed from outside, not created here
+class AdversarialLoss(BaseLoss):
+    def __init__(
+            self,
+            weight: tuple = (1.0, 1.0),
+            discriminator: Discriminator = None,
+            mode: str = 'generator',
+            grad_penalty_weight: float = 0.0,
+            regularization_loss_weight: float = 0.0,
+            regularization_loss: nn.Module = None
+        ):
+        super().__init__(name='adversarial', weight=weight)
+        assert discriminator is not None, 'discriminator must be provided'
+        
         self.discriminator = discriminator
+        self.mode = mode
+        self.grad_penalty_weight = grad_penalty_weight
+        self.regularization_loss_weight = regularization_loss_weight
+        self.regularization_loss = regularization_loss
         # TODO: add discriminator loss
         # TODO: add generator loss
         # TODO: add grad penalty (disc loss)
         # TODO: add regularization loss (disc loss)
         # TODO: figure out how we want to manage disc loss specific weights
 
+    def generator_loss(self, logits_fake):
+        ''' non-saturating generator loss (NLL) '''
+        return -torch.mean(logits_fake)
 
-class AdversarialDiscLoss(BaseLoss):
-    def __init__(self, weight=1.0, discriminator=None):
-        super().__init__(name='adversarial-disc', weight=weight)
-        # The discriminator is passed from outside, not created here
-        self.discriminator = discriminator
+    def discriminator_loss(self, logits_real, logits_fake):
+        '''
+        smooth version hinge loss from:
+        https://github.com/CompVis/taming-transformers/blob/3ba01b241669f5ade541ce990f7650a3b8f65318/taming/modules/losses/vqperceptual.py#L20C1-L24C18
+        '''
+        loss_real = torch.mean(F.softplus(1.0 - logits_real))
+        loss_fake = torch.mean(F.softplus(1.0 + logits_fake))
+        d_loss = (loss_real + loss_fake).mean()
+        return d_loss
+    
+    def gradient_penalty(self, x, logits_real):
+        '''
+        inspired by:
+        https://github.com/lucidrains/magvit2-pytorch/blob/9f49074179c912736e617d61b32be367eb5f993a/magvit2_pytorch/magvit2_pytorch.py#L99
+        '''
+        gradients = torch_grad(
+            outputs = logits_real,
+            inputs = x,
+            grad_outputs = torch.ones(logits_real.size(), device = x.device),
+            create_graph = True,
+            retain_graph = True,
+            only_inputs = True
+        )[0]
+        gradients = rearrange(gradients, 'b ... -> b (...)')
+        return ((gradients.norm(2, dim = 1) - 1) ** 2).mean()
+    
+    def forward(self, x_hat, x):
+        if self.mode == 'generator':
+            logits_fake = self.discriminator(x_hat)
+            loss = self.weight[0] * self.generator_loss(logits_fake)
+        elif self.mode == 'discriminator':
+            logits_real = self.discriminator(x)
+            logits_fake = self.discriminator(x_hat.detatch())
+            loss = self.weight[1] * self.discriminator_loss(logits_real, logits_fake)
+
+            if self.grad_penalty_weight > 0.0:
+                loss += self.grad_penalty_weight * self.gradient_penalty(x, logits_real)
+            if self.regularization_loss_weight > 0.0:
+                loss += self.regularization_loss_weight * self.regularization_loss(logits_real, logits_fake)
+
+        return loss
+
+        
