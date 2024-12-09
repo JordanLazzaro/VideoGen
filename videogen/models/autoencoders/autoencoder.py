@@ -10,10 +10,6 @@ class Autoencoder(nn.Module, ABC):
         super().__init__()
 
     @abstractmethod
-    def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
-        pass
-
-    @abstractmethod
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         pass
 
@@ -22,15 +18,15 @@ class Autoencoder(nn.Module, ABC):
         pass
 
     @abstractmethod
+    def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
+        pass
+
+    @abstractmethod
     def loss(self, output: Dict) -> torch.Tensor:
         pass
 
     @abstractmethod
-    def add_discriminator(self, discriminator: Discriminator):
-        pass
-
-    @abstractmethod
-    def add_aux_loss(self, aux_loss):
+    def add_loss(self, aux_loss):
         pass
 
     @staticmethod

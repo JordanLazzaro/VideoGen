@@ -12,6 +12,9 @@ class VAE(Autoencoder):
         self.discriminator = None
         self.aux_losses = []
 
+        # TODO: add encoder and decoder
+        # TODO: add code for managing auxiliary losses
+
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         return self.encoder(x)
 
@@ -45,9 +48,3 @@ class VAE(Autoencoder):
         z = self.reparameterize(mu, logvar)
         x_hat = self.decode(z)
         return { 'mu': mu, 'logvar': logvar, 'z': z, 'x_hat': x_hat }
-
-    def add_discriminator(self) -> None:
-        pass
-
-    def add_aux_loss(self) -> None:
-        pass

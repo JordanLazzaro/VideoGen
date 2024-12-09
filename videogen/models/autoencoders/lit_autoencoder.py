@@ -12,14 +12,14 @@ from videogen.models.autoencoders.utils import adopt_weight, log_disc_patches, p
 
 
 class LitAutoencoder(pl.LightningModule):
-    def __init__(self, autoencoder: Autoencoder, config: Config):
+    def __init__(self, config: Config, autoencoder: Autoencoder, discriminator: Discriminator = None):
         super().__init__()
         self.automatic_optimization = False
         
         self.config = config
         self.autoencoder = autoencoder
-        self.discriminator = None
-        self.aux_losses = []
+        self.discriminator = discriminator
+        self.losses = self.build_losses(config)
 
         self.autoencoder_lr = config.autoencoder.training.autoencoder_lr
         self.disc_lr = config.autoencoder.training.disc_lr
@@ -44,10 +44,10 @@ class LitAutoencoder(pl.LightningModule):
         x = batch
         out = self(x)
 
-        self.autoencoder_train_step(x, out)
+        self.autoencoder_train_step(out, x)
         
         if self.discriminator is not None:
-            self.discriminator_train_step(x, out)
+            self.discriminator_train_step(out, x)
 
     def validation_step(self, batch):
         x = batch
@@ -60,6 +60,9 @@ class LitAutoencoder(pl.LightningModule):
         self.log_val_clips(x, out)
 
         return rec_loss
+
+    def build_losses(self, config: Config):
+        pass
 
     def configure_optimizers(self):
         gen_optimizer = torch.optim.AdamW(
@@ -97,21 +100,20 @@ class LitAutoencoder(pl.LightningModule):
         else:
             return { 'optimizer': gen_optimizer }
     
-    def autoencoder_train_step(self, x, out) -> None:
+    def autoencoder_train_step(self, out, x) -> None:
         if self.discriminator is not None:
             opt_g = self.optimizers()[0]
         else:
             opt_g = self.optimizers()
 
-        loss = self.autoencoder.loss(out) # TODO: take in dict + change to '.loss(...)'
+        loss = {}
+        for loss_fn in self.losses:
+            loss.update(loss_fn(out, x))
+        
         self.log('train/rec_loss', rec_loss)
 
         if self.config.autoencoder.loss.recon_loss_weight is not None:
             rec_loss = rec_loss * self.config.autoencoder.loss.recon_loss_weight
-
-        total_loss = rec_loss
-        for aux_loss in self.aux_losses:
-            total_loss += aux_loss(out, x) # TODO: modify to account for aux_loss weight in config
         
         if self.discriminator is not None:
             gen_loss_weight = adopt_weight(
@@ -143,9 +145,10 @@ class LitAutoencoder(pl.LightningModule):
         opt_g.zero_grad()
         self.untoggle_optimizer(opt_g)
 
-    def discriminator_train_step(self, x, out) -> None:
+    def discriminator_train_step(self, out, x) -> None:
         opt_d = self.optimizers()[1]
         
+        ########### TODO: fix below after AdversarialLoss creation ################
         disc_loss_weight = adopt_weight(
             self.config.autoencoder.discriminator.loss.disc_loss_weight,
             self.current_epoch,
@@ -186,6 +189,8 @@ class LitAutoencoder(pl.LightningModule):
                 reg_loss = self.discriminator.regularization_loss(logits_real, logits_fake)
                 self.log('train/reg_loss', reg_loss)
                 disc_loss = disc_loss + self.config.discriminator.loss.reg_loss_weight * reg_loss.detach()
+            
+            ########### TODO: fix above after AdversarialLoss creation ################
 
             self.toggle_optimizer(opt_d)
             self.manual_backward(disc_loss)
