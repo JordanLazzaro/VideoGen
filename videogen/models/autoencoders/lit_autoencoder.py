@@ -114,9 +114,9 @@ class LitAutoencoder(pl.LightningModule):
     
     def autoencoder_train_step(self, out, x) -> None:
         if self.discriminator is not None:
-            opt_g = self.optimizers()[0]
+            opt_ae = self.optimizers()[0]
         else:
-            opt_g = self.optimizers()
+            opt_ae = self.optimizers()
 
         loss = {}
         for loss_fn in self.losses.values():
@@ -125,11 +125,11 @@ class LitAutoencoder(pl.LightningModule):
         for name, value in loss:
             self.log(f'train/{name}', value)
 
-        self.toggle_optimizer(opt_g)
+        self.toggle_optimizer(opt_ae)
         self.manual_backward(total_loss)
-        opt_g.step()
-        opt_g.zero_grad()
-        self.untoggle_optimizer(opt_g)
+        opt_ae.step()
+        opt_ae.zero_grad()
+        self.untoggle_optimizer(opt_ae)
 
     def discriminator_train_step(self, out, x) -> None:
         opt_d = self.optimizers()[1]
