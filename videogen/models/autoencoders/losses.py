@@ -18,24 +18,26 @@ class ReconstructionLoss(BaseLoss):
         super().__init__(name='reconstruction', weight=weight)
         self.recon_loss_type = recon_loss_type
 
-    def forward(self, x_hat, x):
+    def forward(self, out, x):
         if recon_self.recon_loss_typeloss_type == 'mae':
-            loss = F.l1_loss(x_hat, x)
+            loss = F.l1_loss(out['x_hat'], x)
         elif self.recon_loss_type == 'mse':
-            loss = F.mse_loss(x_hat, x)
+            loss = F.mse_loss(out['x_hat'], x)
         
         return self.weight * loss
 
 
 class KLDLoss(BaseLoss):
     def __init__(self, weight: float = 1.0):
+        ''' currently calculates KL between two Gaussian distributions '''
         super().__init__(name='kld', weight=weight)
 
-    def forward(self, mu: torch.Tensor, logvar: torch.Tensor):
-        assert mu.shape == logvar.shape, 'mu must be same shape as logvar'
-        assert len(mu.shape) == 4 and len(logvar) == 4, 'mu and logvar must be of shape: (B, C, H, W)'
+    def forward(self, out, x):
+        assert out['mu'] is not None and out['logvar'] is not None, 'mu and logvar must be a part of out'
+        assert out['mu'].shape == out['logvar'].shape, 'mu must be same shape as logvar'
+        assert len(out['mu'].shape) == 4 and len(out['logvar']) == 4, 'mu and logvar must be of shape: (B, C, H, W)'
 
-        return torch.mean(-0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=[1, 2, 3]), dim=0)
+        return torch.mean(-0.5 * torch.sum(1 + out['logvar'] - out['mu'].pow(2) - out['logvar'].exp(), dim=[1, 2, 3]), dim=0)
 
 
 class PerceptualLoss(BaseLoss):
@@ -60,28 +62,24 @@ class PerceptualLoss(BaseLoss):
         self.register_buffer("std", rearrange(torch.tensor([0.229, 0.224, 0.225]), 'c -> 1 c 1 1'))
            
 
-    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        # TODO: Ensure input is RGB
-        if input.shape[1] != 3:
-            input = repeat(input, 'b 1 h w -> b c h w', c=3)
-            target = repeat(target, 'b 1 h w -> b c h w', c=3)
+    def forward(self, out, x) -> torch.Tensor:
+        if x.shape[1] != 3:
+            x = repeat(x, 'b 1 h w -> b c h w', c=3)
+            x_hat = repeat(out['x_hat'], 'b 1 h w -> b c h w', c=3)
             
         # normalize with ImageNet stats
-        input = (input - self.mean) / self.std
-        target = (target - self.mean) / self.std
+        x = (x - self.mean) / self.std
+        x_hat = (x_hat - self.mean) / self.std
         
         # resize to 224x224 as VGG expects this size
-        input = F.interpolate(input, mode='bilinear', size=(224, 224), align_corners=False)
-        target = F.interpolate(target, mode='bilinear', size=(224, 224), align_corners=False)
+        x = F.interpolate(x, mode='bilinear', size=(224, 224), align_corners=False)
+        x_hat = F.interpolate(x_hat, mode='bilinear', size=(224, 224), align_corners=False)
             
         loss = 0.0
-        x = input
-        y = target
-        
         for block in self.blocks:
             x = block(x)
-            y = block(y)
-            loss += F.l1_loss(x, y)
+            x_hat = block(x_hat)
+            loss += F.l1_loss(x_hat, x)
             
         return loss
 
@@ -91,24 +89,17 @@ class AdversarialLoss(BaseLoss):
             self,
             weight: tuple = (1.0, 1.0),
             discriminator: Discriminator = None,
-            mode: str = 'generator',
-            grad_penalty_weight: float = 0.0,
+            regularization_loss: nn.Module = None,
             regularization_loss_weight: float = 0.0,
-            regularization_loss: nn.Module = None
+            grad_penalty_weight: float = 0.0,
         ):
         super().__init__(name='adversarial', weight=weight)
-        assert discriminator is not None, 'discriminator must be provided'
+        assert discriminator is not None, 'Discriminator must be provided'
         
         self.discriminator = discriminator
-        self.mode = mode
         self.grad_penalty_weight = grad_penalty_weight
         self.regularization_loss_weight = regularization_loss_weight
         self.regularization_loss = regularization_loss
-        # TODO: add discriminator loss
-        # TODO: add generator loss
-        # TODO: add grad penalty (disc loss)
-        # TODO: add regularization loss (disc loss)
-        # TODO: figure out how we want to manage disc loss specific weights
 
     def generator_loss(self, logits_fake):
         ''' non-saturating generator loss (NLL) '''
@@ -140,19 +131,22 @@ class AdversarialLoss(BaseLoss):
         gradients = rearrange(gradients, 'b ... -> b (...)')
         return ((gradients.norm(2, dim = 1) - 1) ** 2).mean()
     
-    def forward(self, x_hat, x):
-        if self.mode == 'generator':
-            logits_fake = self.discriminator(x_hat)
+    def forward(self, out, x, mode='generator'):
+        if mode == 'generator':
+            logits_fake = self.discriminator(out['x_hat'])
             loss = self.weight[0] * self.generator_loss(logits_fake)
-        elif self.mode == 'discriminator':
+        elif mode == 'discriminator':
             logits_real = self.discriminator(x)
-            logits_fake = self.discriminator(x_hat.detatch())
+            logits_fake = self.discriminator(out['x_hat'].detatch())
+            
             loss = self.weight[1] * self.discriminator_loss(logits_real, logits_fake)
-
+            
             if self.grad_penalty_weight > 0.0:
                 loss += self.grad_penalty_weight * self.gradient_penalty(x, logits_real)
             if self.regularization_loss_weight > 0.0:
                 loss += self.regularization_loss_weight * self.regularization_loss(logits_real, logits_fake)
+        else:
+            raise 
 
         return loss
 
