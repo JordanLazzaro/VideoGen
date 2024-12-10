@@ -89,6 +89,7 @@ class AdversarialLoss(BaseLoss):
             self,
             weight: tuple = (1.0, 1.0),
             discriminator: Discriminator = None,
+            discriminator_delay: int = 0,
             regularization_loss: nn.Module = None,
             regularization_loss_weight: float = 0.0,
             grad_penalty_weight: float = 0.0,
@@ -132,21 +133,22 @@ class AdversarialLoss(BaseLoss):
         return ((gradients.norm(2, dim = 1) - 1) ** 2).mean()
     
     def forward(self, out, x, mode='generator'):
+        loss = {} # TODO: I wanna log unweighted individual losses and total loss
         if mode == 'generator':
             logits_fake = self.discriminator(out['x_hat'])
-            loss = self.weight[0] * self.generator_loss(logits_fake)
+            loss.update({ 'generator_loss': self.weight[0] * self.generator_loss(logits_fake) })
         elif mode == 'discriminator':
             logits_real = self.discriminator(x)
             logits_fake = self.discriminator(out['x_hat'].detatch())
             
-            loss = self.weight[1] * self.discriminator_loss(logits_real, logits_fake)
+            disc_loss = self.weight[1] * self.discriminator_loss(logits_real, logits_fake)
             
             if self.grad_penalty_weight > 0.0:
-                loss += self.grad_penalty_weight * self.gradient_penalty(x, logits_real)
+                disc_loss += self.grad_penalty_weight * self.gradient_penalty(x, logits_real)
             if self.regularization_loss_weight > 0.0:
-                loss += self.regularization_loss_weight * self.regularization_loss(logits_real, logits_fake)
+                disc_loss += self.regularization_loss_weight * self.regularization_loss(logits_real, logits_fake)
         else:
-            raise 
+            raise ValueError('Invalid mode type.')
 
         return loss
 

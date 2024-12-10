@@ -132,6 +132,8 @@ class LitAutoencoder(pl.LightningModule):
         self.untoggle_optimizer(opt_ae)
 
     def discriminator_train_step(self, out, x) -> None:
+        if self.global_step <= self.config.training.discriminator_delay: return
+        
         opt_d = self.optimizers()[1]
 
         loss = self.losses['adversarial'](out, x, mode='discriminator')
