@@ -21,20 +21,15 @@ class Autoencoder(nn.Module, ABC):
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         pass
 
-    @abstractmethod
-    def loss(self, output: Dict) -> torch.Tensor:
-        pass
-
-    @abstractmethod
-    def add_loss(self, aux_loss):
-        pass
-
     @staticmethod
     def get_autoencoder(config: Config):
         from videogen.models.autoencoders.models.magvit2 import MAGVIT2
         from videogen.models.autoencoders.models.fsq_vae import FSQVAE
+        from videogen.models.autoencoders.models.vae import VAE
         
-        if config.tokenizer.name == 'vanilla-fsq-vae':
+        if config.autoencoder.name == 'vae':
+            return VAE(config)
+        if config.autoencoder.name == 'vanilla-fsq-vae':
             return FSQVAE(config)
-        if config.tokenizer.name == 'magvit2':
+        if config.autoencoder.name == 'magvit2':
             return MAGVIT2(config)
