@@ -21,7 +21,7 @@ are stored as an HDF5 dataset.
 ## Latent Action Model Dataset
 The Latent Action Model dataset consists of a sequence of frame latents encoded by our pretrained VAE, where all frame latents are packed and stored as a contiguous, memory-mapped binary file in float32 precision.
 
-We will  has 6 player controls (D-Up, D-Down, D-Left, D-Right, A, B), as well as a 7th implicit NoOp action. 
+We will have 6 player actions (D-Up, D-Down, D-Left, D-Right, A, B), as well as a 7th implicit NoOp action. 
 
 ## Latent-Action Dynamics Dataset
 Collect a sequence of frame latents encoded by our pretrained VAE and their corresponding action codes from our pretrained Latent Action Model.
