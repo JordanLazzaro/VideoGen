@@ -11,7 +11,7 @@ recordings from separate attempts clipped together, which could potentially impa
 represented in the recording. Both of these are major open questions to be addressed and evaluated post training.
 
 The GameBoy display has an aspect ratio of 10:9, with size: W=160px H=144px, and is a 2-bit green display. The longplay videos
-are in a higher resolution, color shifted to grayscale, and contains black side bars, so we can crop the video, resize to a 1:1 aspect ratio, 
+are in a higher resolution, color shifted to grayscale (though still RGB), and contains black side bars, so we can crop the video, resize to a 1:1 aspect ratio, 
 convert from RGB to Grayscale, and downscale to W=256px, H=256px without much loss of perceptual quality.
 
 ## Frame Dataset
