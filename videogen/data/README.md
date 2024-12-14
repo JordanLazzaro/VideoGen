@@ -5,7 +5,7 @@ thorough, and normally paced playthrough of a given game, including all or most 
 very information dense dataset for training [Generative Interactive Environments](https://arxiv.org/abs/2402.15391), as they capture the full 
 range of environment dynamics and interactability from the player. 
 
-One interesting caveat is that the player generally never looses the game or looses any signifacant amount of health/resources/tries in a 
+One interesting caveat is that the player generally never loses the game or loses any signifacant amount of health/resources/tries in a 
 longplay recording, showing a clear and important gap in their representation of game mechanics. They will at times also be composed of 
 recordings from separate attempts clipped together, which could potentially impact the continuity of the underlying game mechanics as they are 
 represented in the recording. Both of these are major open questions to be addressed and evaluated post training.
