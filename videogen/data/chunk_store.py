@@ -42,8 +42,7 @@ class ChunkStore:
 
         if mode == 'w':
             if self.data_file.exists():
-                raise FileExistsError(
-                    f"File: {self.data_file} already exists.")
+                raise FileExistsError(f"File: {self.data_file} already exists.")
             if self.metadata_file.exists():
                 raise FileExistsError(f"File: {self.metadata_file} already exists.")
             self.mmap = np.memmap(self.data_file, dtype='uint8', mode='w+', shape=(0,))
