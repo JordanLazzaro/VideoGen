@@ -7,7 +7,7 @@ from dataclasses import dataclass, asdict
 import struct
 
 
-class FrameMetadata:
+class ChunkMetadata:
     idx: int
     byte_offset: int
     byte_size: int
@@ -20,10 +20,10 @@ class FrameMetadata:
         return np.prod(self.shape) * np.dtype(self.dtype).itemsize
 
 
-class FrameStore:
+class ChunkStore:
     def __init__(self, filename: str, mode: str = 'r'):
         ''' 
-        memory-mapped binary file containing a contiguous sequence of individually lzf-compressed video frames.
+        memory-mapped binary file containing a contiguous sequence of individually lzf-compressed chunks.
 
         Args:
             filename: Base name for the store files
@@ -38,7 +38,7 @@ class FrameStore:
 
         self.data_file = Path(str(filename) + '.bin')
         self.metadata_file = Path(str(filename) + '.meta.json')
-        self.frames_metadata = {}
+        self.chunks_metadata = {}
 
         if mode == 'w':
             if self.data_file.exists() or self.metadata_file.exists():
@@ -56,7 +56,7 @@ class FrameStore:
             self.mmap = np.memmap(self.data_file, dtype='uint8', mode=mode, shape=(file_size,))
 
 
-    def append(self, frame: np.ndarray) -> None:
+    def append(self, chunk: np.ndarray) -> None:
         if not hasattr(self, 'mmap') or self.mmap.mode not in ('r+', 'w+'):
             raise ValueError("File not opened in write mode")
 
@@ -74,22 +74,22 @@ class FrameStore:
         np.copyto(self.mmap[current_offset:], np.frombuffer(compressed_data, dtype='uint8'))
         self.mmap.flush()
         
-        metadata = FrameMetadata(
+        metadata = ChunkMetadata(
             idx=self.next_index,
             offset=current_offset,
             compressed_size=compressed_size,
             shape=frame.shape,
             dtype=str(frame.dtype)
         )
-        self.frames_metadata.append(metadata)
+        self.chunks_metadata.append(metadata)
         self.next_index += 1
         self._save_metadata()
 
     def __getitem__(self, idx: int) -> np.ndarray:
-        if idx not in self.frames_metadata:
-            raise IndexError(f"Frame index {idx} not found")
+        if idx not in self.chunks_metadata:
+            raise IndexError(f"Chunk index {idx} not found")
         
-        metadata = self.frames_metadata[idx]
+        metadata = self.chunks_metadata[idx]
         compressed_data = self.mmap[metadata.offset:metadata.byte_offset + metadata.byte_size]
         decompressed_data = lzf.decompress(compressed_data.tobytes(), metadata.original_byte_size)
         frame = np.frombuffer(decompressed_data, dtype=metadata.dtype).reshape(metadata.shape)
@@ -97,7 +97,7 @@ class FrameStore:
         return frame
 
     def __len__(self) -> int:
-        return len(self.frames_metadata)
+        return len(self.chunks_metadata)
 
     def __enter__(self):
         return self
@@ -107,16 +107,15 @@ class FrameStore:
         return False  # don't suppress exceptions
 
     def close(self) -> None:
-        """Close the memory-mapped file"""
         if self.mmap is not None:
             self.mmap.flush()
             del self.mmap
             self.mmap = None
     
     def get_metadata(self, idx: int) -> Dict[str, Any]:
-        if idx not in self.frames_metadata:
-            raise IndexError(f"Frame index {idx} not found")
-        return asdict(self.frames_metadata[idx])
+        if idx not in self.chunks_metadata:
+            raise IndexError(f"Chunk index {idx} not found")
+        return asdict(self.chunks_metadata[idx])
 
     def _load_metadata(self) -> None:
         with open(self.meta_file, 'r') as f:
@@ -124,8 +123,8 @@ class FrameStore:
         
         self.next_index = metadata_dict.pop('__next_index__', 0)
         
-        self.frames_metadata = {
-            int(idx): FrameMetadata(
+        self.chunks_metadata = {
+            int(idx): ChunkMetadata(
                 idx=m['idx'],
                 byte_offset=m['byte_offset'],
                 byte_size=m['byte_size'],
@@ -144,7 +143,7 @@ class FrameStore:
                 'shape': metadata.shape,
                 'dtype': metadata.dtype
             }
-            for idx, metadata in self.frames_metadata.items()
+            for idx, metadata in self.chunks_metadata.items()
         }
         # save next_index to maintain continuity across sessions
         metadata_dict['__next_index__'] = self.next_index
