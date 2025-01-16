@@ -5,9 +5,9 @@ from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
 
 from config import Config
-from videogen.data.steamboat_willie.litdataset import SteamboatWillieDataModule
-from videogen.models.lightning.magvit2 import LitMAGVIT2
-from videogen.models.tokenizers.models.magvit2 import MAGVIT2
+from videogamegen.data.steamboat_willie.litdataset import SteamboatWillieDataModule
+from videogamegen.models.lightning.magvit2 import LitMAGVIT2
+from videogamegen.models.tokenizers.models.magvit2 import MAGVIT2
 
 
 def train():

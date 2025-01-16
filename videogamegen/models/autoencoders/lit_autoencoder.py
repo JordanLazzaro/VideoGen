@@ -5,10 +5,10 @@ import numpy as np
 import pytorch_lightning as pl
 from typing import Dict
 
-from videogen.config import Config
-from videogen.models.autoencoders.discriminators.discriminator import Discriminator
-from videogen.models.autoencoders.autoencoder import Autoencoder
-from videogen.models.autoencoders.utils import adopt_weight, log_disc_patches, pick_random_frames, pick_random_tubelets
+from videogamegen.config import Config
+from videogamegen.models.autoencoders.discriminators.discriminator import Discriminator
+from videogamegen.models.autoencoders.autoencoder import Autoencoder
+from videogamegen.models.autoencoders.utils import adopt_weight, log_disc_patches, pick_random_frames, pick_random_tubelets
 
 
 class LitAutoencoder(pl.LightningModule):

@@ -5,7 +5,7 @@ from einops import rearrange
 from torch.autograd import grad as torch_grad
 from torch.nn import functional as F
 
-from videogen.models.modules import ( 
+from videogamegen.models.modules import ( 
     CausalConv3d,
     ResBlock3d,
     FSQ,
@@ -14,8 +14,8 @@ from videogen.models.modules import (
     AdaptiveGroupNorm,
     Upsample3d
 )
-from videogen.models.tokenizers.discriminators.models.patch_disc import PatchDiscriminator
-from videogen.models.tokenizers.discriminators.models.tubelet_disc import TubeletDiscriminator
+from videogamegen.models.tokenizers.discriminators.models.patch_disc import PatchDiscriminator
+from videogamegen.models.tokenizers.discriminators.models.tubelet_disc import TubeletDiscriminator
 
 
 class EncoderBlock(nn.Module):

@@ -3,7 +3,7 @@ from torch import nn
 from itertools import zip_longest
 from einops import rearrange
 
-from videogen.models.modules import ResBlockDown2d
+from videogamegen.models.modules import ResBlockDown2d
 
 
 class PatchDiscriminator(nn.Module):

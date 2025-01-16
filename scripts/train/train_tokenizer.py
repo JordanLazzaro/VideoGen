@@ -8,11 +8,11 @@ from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
 import pytorch_lightning as pl
 
-from videogen.config import Config
-from videogen.data.litdataset import LitDataModule
-from videogen.models.tokenizers.discriminators.discriminator import Discriminator
-from videogen.models.tokenizers.lit_tokenizer import LitTokenizer
-from videogen.models.tokenizers.tokenizer import Tokenizer
+from videogamegen.config import Config
+from videogamegen.data.litdataset import LitDataModule
+from videogamegen.models.tokenizers.discriminators.discriminator import Discriminator
+from videogamegen.models.tokenizers.lit_tokenizer import LitTokenizer
+from videogamegen.models.tokenizers.tokenizer import Tokenizer
 
 
 def train(model_config: Dict[str, Any], data_config: Dict[str, Any], kwargs: Dict[str, Any]):

@@ -3,7 +3,7 @@ import argparse
 from tqdm.auto import tqdm
 from pathlib import Path
 import numpy as np
-from videogen.data.chunkstore import ChunkStore
+from videogamegen.data.chunkstore import ChunkStore
 
 
 def convert_h5_to_chunkstore(h5_path: str, batch_size: int = 1024) -> None:

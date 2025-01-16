@@ -1,6 +1,6 @@
 import torch
 import pytorch_lightning as pl
-from videogen.data.utils import get_dataset
+from videogamegen.data.utils import get_dataset
 
 
 class LitDataModule(pl.LightningDataModule):

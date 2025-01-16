@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Dict
-from videogen.config import Config
+from videogamegen.config import Config
 from torch import nn
 import torch
 

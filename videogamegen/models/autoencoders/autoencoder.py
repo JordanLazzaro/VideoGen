@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Dict
-from videogen.config import Config
+from videogamegen.config import Config
 from torch import nn
 import torch
 
@@ -23,9 +23,9 @@ class Autoencoder(nn.Module, ABC):
 
     @staticmethod
     def get_autoencoder(config: Config):
-        from videogen.models.autoencoders.models.magvit2 import MAGVIT2
-        from videogen.models.autoencoders.models.fsq_vae import FSQVAE
-        from videogen.models.autoencoders.models.vae import VAE
+        from videogamegen.models.autoencoders.models.magvit2 import MAGVIT2
+        from videogamegen.models.autoencoders.models.fsq_vae import FSQVAE
+        from videogamegen.models.autoencoders.models.vae import VAE
         
         if config.autoencoder.name == 'vae':
             return VAE(config)

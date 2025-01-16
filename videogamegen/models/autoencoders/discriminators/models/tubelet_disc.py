@@ -3,7 +3,7 @@ from torch import nn
 from itertools import zip_longest
 from einops import rearrange
 
-from videogen.models.modules import ResBlockDown3d 
+from videogamegen.models.modules import ResBlockDown3d 
 
 
 class TubeletDiscriminator(nn.Module):

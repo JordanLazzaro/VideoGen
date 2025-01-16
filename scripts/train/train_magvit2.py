@@ -4,10 +4,10 @@ import wandb
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
-from videogen.config import Config
-from videogen.models.tokenizers.models.magvit2 import MAGVIT2
-from videogen.models.tokenizers.lit_tokenizer import LitTokenizer
-from videogen.data.steamboat_willie.litdataset import SteamboatWillieDataModule
+from videogamegen.config import Config
+from videogamegen.models.tokenizers.models.magvit2 import MAGVIT2
+from videogamegen.models.tokenizers.lit_tokenizer import LitTokenizer
+from videogamegen.data.steamboat_willie.litdataset import SteamboatWillieDataModule
 
 
 resume_training = False

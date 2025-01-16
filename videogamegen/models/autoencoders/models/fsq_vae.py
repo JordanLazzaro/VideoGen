@@ -6,14 +6,14 @@ from einops import rearrange
 from torch.autograd import grad as torch_grad
 from torch.nn import functional as F
 
-from videogen.config import Config
+from videogamegen.config import Config
 
-from videogen.models.modules import (
+from videogamegen.models.modules import (
     FSQ,
     Encoder,
     Decoder
 )
-from videogen.models.autoencoders.autoencoder import Autoencoder
+from videogamegen.models.autoencoders.autoencoder import Autoencoder
 
 
 class FSQVAE(Autoencoder):

@@ -1,9 +1,9 @@
 import torch
 from torch import nn
 from typing import Dict
-from videogen.config import Config
-from videogen import Autoencoder
-from videogen.models.modules import Encoder2d, Decoder2d
+from videogamegen.config import Config
+from videogamegen import Autoencoder
+from videogamegen.models.modules import Encoder2d, Decoder2d
 
 class VAE(Autoencoder):
     def __init__(self, config: Config):
