@@ -148,6 +148,40 @@ class BlurPool3d(nn.Module):
         return filter / torch.sum(filter)
     
 
+class ResBlock2d(nn.Module):
+    def __init__(
+        self,in_channels,
+        out_channels,
+        kernel_size=(3,3)
+    ):
+        super().__init__()
+        if in_channels != out_channels:
+            self.identity = Conv2d(
+                in_channels  = in_channels,
+                out_channels = out_channels,
+                kernel_size  = (1, 1)
+            )
+        else:
+            self.identity = nn.Identity()
+
+        self.block = nn.Sequential(
+            AdaptiveGroupNorm(in_channels),
+            nn.SiLU(),
+            nn.Conv2d(
+                in_channels=in_channels,
+                out_channels=out_channels
+            ),
+            AdaptiveGroupNorm(out_channels),
+            nn.SiLU(),
+            nn.Conv2d(
+                in_channels=out_channels,
+                out_channels=out_channels
+            )
+        )
+    def forward(self, x):
+        return self.block(x) + self.identity(x)
+
+
 class ResBlock3d(nn.Module):
     ''' handles both same and different in/out channels '''
     def __init__(
@@ -568,6 +602,17 @@ class EMAVectorQuantization(nn.Module):
         }
     
 
+class EncoderBlock2d(nn.Module):
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            num_res_blocks,
+            kernel_size=(3,3)
+        ):
+        super().__init__()
+        self.block = 
+
 class EncoderBlock3d(nn.Module):
     def __init__(
             self,
@@ -668,7 +713,15 @@ class DecoderBlock3d(nn.Module):
         return self.block(x)
     
 
-class Encoder(nn.Module):
+class Encoder2d(nn.Module):
+    def __init__(self):
+        pass
+
+    def forward(self, x):
+        pass
+
+
+class Encoder3d(nn.Module):
     def __init__(
             self,
             in_channels,
@@ -741,9 +794,17 @@ class Encoder(nn.Module):
             x = block(x)
         x = self.out_conv(x)
         return x
+
+
+class Decoder2d(nn.Module):
+    def __init__(self):
+        pass
+
+    def forward(self, x):
+        pass
     
 
-class Decoder(nn.Module):
+class Decoder3d(nn.Module):
     def __init__(
             self,
             in_channels,
