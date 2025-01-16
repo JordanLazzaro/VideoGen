@@ -13,6 +13,8 @@ class VideoFrameDataset(Dataset):
     def __init__(self, h5_dir, selected_longplay_ids=[]):
         self.idx_range_path_map = IntervalTree()
         self.file_ptr_cache = {}
+
+        # TODO: convert h5 frame store to ChunkStore
         
         total_frames = 0
         for path in sorted(Path(h5_dir).glob("*.h5")):
@@ -44,43 +46,6 @@ class VideoFrameDataset(Dataset):
         frame = rearrange(frame, 'h w c -> c h w')
         
         return frame
-    
-    # def __getitem__(self, idx):
-    #     start = time.perf_counter()
-        
-    #     # Time interval lookup
-    #     t0 = time.perf_counter()
-    #     intervals = self.idx_range_path_map[idx]
-    #     if not intervals:
-    #         raise IndexError(f"Frame index {idx} out of bounds")
-    #     if len(intervals) > 1:
-    #         raise RuntimeError(f"Found overlapping video frames at index {idx}. This should never happen!")
-    #     interval = intervals.pop()
-    #     t_interval = time.perf_counter() - t0
-        
-    #     # Time H5 read
-    #     t0 = time.perf_counter()
-    #     path = interval.data
-    #     f = self.file_ptr_cache[path]
-    #     frame_idx = idx - interval.begin
-    #     frame = torch.from_numpy(f['video_frames'][frame_idx]).float()
-    #     t_read = time.perf_counter() - t0
-        
-    #     # Time reshape
-    #     t0 = time.perf_counter()
-    #     frame = rearrange(frame, 'h w c -> c h w')
-    #     t_reshape = time.perf_counter() - t0
-        
-    #     total_time = time.perf_counter() - start
-        
-    #     if idx % 100 == 0:  # Log every 100th frame
-    #         print(f"Frame {idx} timing:")
-    #         print(f"  Interval lookup: {t_interval*1000:.2f}ms")
-    #         print(f"  H5 read: {t_read*1000:.2f}ms")
-    #         print(f"  Reshape: {t_reshape*1000:.2f}ms")
-    #         print(f"  Total: {total_time*1000:.2f}ms")
-        
-    #     return frame
 
     def populate_worker_fp_cache(self):
         self.file_ptr_cache = {
