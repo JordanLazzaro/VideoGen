@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any, Union
 from dataclasses import dataclass, asdict
 import struct
+import time
 
 
 @dataclass
@@ -24,7 +25,7 @@ class ChunkMetadata:
 class ChunkStore:
     def __init__(
         self,
-        path: str,
+        path: Union[str, Path],
         chunk_shape: Optional[Tuple[int, ...]] = None,
         dtype: Optional[Union[np.dtype, str]] = None,
         mode: str = 'r'
@@ -41,7 +42,7 @@ class ChunkStore:
                 'r+': Read-write access to existing store (append)
                 'w+': Create new store, overwriting if exists
         '''
-        if mode not in ('r', 'r+', 'w+'):
+        if mode not in ('r', 'w+'):
             raise ValueError("Mode must be 'r', 'r+', or 'w+'")
 
         if mode == 'w+' and (chunk_shape is None or dtype is None):
@@ -51,7 +52,7 @@ class ChunkStore:
         self.dtype = dtype
         self.mode = mode
         
-        self.base_dir = Path(path)
+        self.base_dir = Path(path) if isinstance(path, str) else path
         self.data_file = self.base_dir / 'data.bin'
         self.metadata_file = self.base_dir / 'metadata.json'
         
@@ -77,8 +78,9 @@ class ChunkStore:
                 raise FileNotFoundError(f"File: {self.data_file} not found")
             if not self.metadata_file.exists():
                 raise FileNotFoundError(f"File: {self.metadata_file} not found")
-                
+
             self._load_metadata()
+            self._mmap = np.memmap(self.data_file, dtype='uint8', mode=mode, shape=(self.data_file.stat().st_size,))
 
     def append(self, chunks: Union[np.ndarray, List[np.ndarray]]) -> None:
         """
@@ -123,18 +125,45 @@ class ChunkStore:
             
         self._save_metadata()
 
+    # def __getitem__(self, idx: int) -> np.ndarray:
+    #     if not isinstance(idx, int):
+    #         raise TypeError("Index must be an integer")
+    #     if idx not in self.chunks_metadata:
+    #         raise IndexError(f"Chunk index {idx} not found")
+    #     # if self._mmap is None:
+    #     #     raise RuntimeError('mmap must be initialized')
+
+    #     metadata = self.chunks_metadata[idx]
+    #     # mmap = np.memmap(self.data_file, dtype='uint8', mode='r', shape=(self.data_file.stat().st_size,))
+        
+    #     # compressed_data = mmap[metadata.byte_offset:metadata.byte_offset + metadata.byte_size]
+    #     compressed_data = self._mmap[metadata.byte_offset:metadata.byte_offset + metadata.byte_size]
+    #     decompressed_data = lzf.decompress(compressed_data.tobytes(), metadata.original_byte_size)
+    #     chunk = np.frombuffer(decompressed_data, dtype=metadata.dtype).reshape(metadata.shape)
+        
+    #     return chunk
+
     def __getitem__(self, idx: int) -> np.ndarray:
+        start_total = time.perf_counter()
+        
         if not isinstance(idx, int):
             raise TypeError("Index must be an integer")
         if idx not in self.chunks_metadata:
             raise IndexError(f"Chunk index {idx} not found")
-
-        metadata = self.chunks_metadata[idx]
-        mmap = np.memmap(self.data_file, dtype='uint8', mode='r', shape=(self.data_file.stat().st_size,))
         
-        compressed_data = mmap[metadata.byte_offset:metadata.byte_offset + metadata.byte_size]
+        metadata = self.chunks_metadata[idx]
+        
+        t1 = time.perf_counter()
+        compressed_data = self._mmap[metadata.byte_offset:metadata.byte_offset + metadata.byte_size]
+        t2 = time.perf_counter()
+        
         decompressed_data = lzf.decompress(compressed_data.tobytes(), metadata.original_byte_size)
+        t3 = time.perf_counter()
+        
         chunk = np.frombuffer(decompressed_data, dtype=metadata.dtype).reshape(metadata.shape)
+        t4 = time.perf_counter()
+        
+        print(f"Slice: {t2-t1:.6f}s, Decompress: {t3-t2:.6f}s, Reshape: {t4-t3:.6f}s, Total: {t4-start_total:.6f}s")
         
         return chunk
 
