@@ -3,16 +3,17 @@ import imageio
 import wandb
 import numpy as np
 import pytorch_lightning as pl
-from typing import Dict
+from typing import Dict, Optional
 
 from videogamegen.config import Config
 from videogamegen.models.autoencoders.discriminators.discriminator import Discriminator
 from videogamegen.models.autoencoders.autoencoder import Autoencoder
+from videogamegen.models.autoencoders.losses import ReconstructionLoss, KLDLoss, PerceptualLoss, AdversarialLoss
 from videogamegen.models.autoencoders.utils import adopt_weight, log_disc_patches, pick_random_frames, pick_random_tubelets
 
 
 class LitAutoencoder(pl.LightningModule):
-    def __init__(self, config: Config, autoencoder: Autoencoder, discriminator: Discriminator = None):
+    def __init__(self, config: Config, autoencoder: Autoencoder, discriminator: Optional[Discriminator] = None):
         super().__init__()
         self.automatic_optimization = False
         
@@ -118,6 +119,7 @@ class LitAutoencoder(pl.LightningModule):
         else:
             opt_ae = self.optimizers()
 
+        # TODO: accumulate/log totol_loss
         loss = {}
         for loss_fn in self.losses.values():
             loss.update(loss_fn(out, x))

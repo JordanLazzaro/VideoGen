@@ -1,6 +1,9 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
+from einops import rearrange, repeat
+from videogamegen.models.autoencoders.discriminators.discriminator import Discriminator
+from torch.autograd import grad as torch_grad
 
 
 class BaseLoss(nn.Module):
@@ -19,7 +22,7 @@ class ReconstructionLoss(BaseLoss):
         self.recon_loss_type = recon_loss_type
 
     def forward(self, out, x):
-        if recon_self.recon_loss_typeloss_type == 'mae':
+        if self.recon_loss_type == 'mae':
             loss = F.l1_loss(out['x_hat'], x)
         elif self.recon_loss_type == 'mse':
             loss = F.mse_loss(out['x_hat'], x)
@@ -87,7 +90,7 @@ class PerceptualLoss(BaseLoss):
 class AdversarialLoss(BaseLoss):
     def __init__(
             self,
-            weight: tuple = (1.0, 1.0),
+            weight: tuple = (1.0, 1.0), # (gen weight, disc weight)
             discriminator: Discriminator = None,
             discriminator_delay: int = 0,
             regularization_loss: nn.Module = None,
@@ -101,6 +104,7 @@ class AdversarialLoss(BaseLoss):
         self.grad_penalty_weight = grad_penalty_weight
         self.regularization_loss_weight = regularization_loss_weight
         self.regularization_loss = regularization_loss
+        self.weight = weight
 
     def generator_loss(self, logits_fake):
         ''' non-saturating generator loss (NLL) '''
