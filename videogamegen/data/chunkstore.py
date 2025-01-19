@@ -1,11 +1,11 @@
 import numpy as np
 import json
 import lzf
+import time
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any, Union
 from dataclasses import dataclass, asdict
-import struct
-import time
+from concurrent.futures import ThreadPoolExecutor
 
 
 @dataclass
@@ -28,7 +28,8 @@ class ChunkStore:
         path: Union[str, Path],
         chunk_shape: Optional[Tuple[int, ...]] = None,
         dtype: Optional[Union[np.dtype, str]] = None,
-        mode: str = 'r'
+        mode: str = 'r',
+        num_workers: int = 8
     ):
         ''' 
         memory-mapped binary file containing a contiguous sequence of individually lzf-compressed chunks.
@@ -81,6 +82,9 @@ class ChunkStore:
 
             self._load_metadata()
             self._mmap = np.memmap(self.data_file, dtype='uint8', mode=mode, shape=(self.data_file.stat().st_size,))
+        
+        self._decompress_pool = ThreadPoolExecutor(max_workers=num_workers)
+        self._io_pool = ThreadPoolExecutor(max_workers=32)
 
     def append(self, chunks: Union[np.ndarray, List[np.ndarray]]) -> None:
         """
@@ -125,46 +129,41 @@ class ChunkStore:
             
         self._save_metadata()
 
-    # def __getitem__(self, idx: int) -> np.ndarray:
-    #     if not isinstance(idx, int):
-    #         raise TypeError("Index must be an integer")
-    #     if idx not in self.chunks_metadata:
-    #         raise IndexError(f"Chunk index {idx} not found")
-    #     # if self._mmap is None:
-    #     #     raise RuntimeError('mmap must be initialized')
-
-    #     metadata = self.chunks_metadata[idx]
-    #     # mmap = np.memmap(self.data_file, dtype='uint8', mode='r', shape=(self.data_file.stat().st_size,))
-        
-    #     # compressed_data = mmap[metadata.byte_offset:metadata.byte_offset + metadata.byte_size]
-    #     compressed_data = self._mmap[metadata.byte_offset:metadata.byte_offset + metadata.byte_size]
-    #     decompressed_data = lzf.decompress(compressed_data.tobytes(), metadata.original_byte_size)
-    #     chunk = np.frombuffer(decompressed_data, dtype=metadata.dtype).reshape(metadata.shape)
-        
-    #     return chunk
-
-    def __getitem__(self, idx: int) -> np.ndarray:
-        start_total = time.perf_counter()
-        
-        if not isinstance(idx, int):
-            raise TypeError("Index must be an integer")
-        if idx not in self.chunks_metadata:
+    def __getitem__(self, idx: Union[int, List[int]]) -> np.ndarray:
+        if not isinstance(idx, (int, list)):
+            raise TypeError("Index must be an integer or list of ints")
+        if isinstance(idx, int) not in self.chunks_metadata:
             raise IndexError(f"Chunk index {idx} not found")
+        if isinstance(idx, list):
+            if set(idx).issubset(self.chunks_metadata.keys()):
+                raise IndexError(f"Chunk index {idx} not found")
+        if self._mmap is None:
+            raise RuntimeError("mmap must be initialized. Open in 'r' or 'r+' mode.")
+
+        indices = [idx] if isinstance(idx, int) else idx
+        read_futures = [
+            (i, self._io_pool.submit(self._read_compressed_chunk, i))
+            for i in indices
+        ]
+        compressed_chunks = [(i, f.result()) for i, f in read_futures]
+
+        decompressed_chunks = [
+            self._decompress_chunk(i, compressed_chunk)
+            for i, compressed_chunk in compressed_chunks
+        ]
         
+        if isinstance(idx, int):
+            return decompressed_chunks[0]
+        return torch.stack(decompressed_chunks)
+
+    def _read_compressed_chunk(self, idx) -> np.ndarray:
         metadata = self.chunks_metadata[idx]
-        
-        t1 = time.perf_counter()
-        compressed_data = self._mmap[metadata.byte_offset:metadata.byte_offset + metadata.byte_size]
-        t2 = time.perf_counter()
-        
-        decompressed_data = lzf.decompress(compressed_data.tobytes(), metadata.original_byte_size)
-        t3 = time.perf_counter()
-        
-        chunk = np.frombuffer(decompressed_data, dtype=metadata.dtype).reshape(metadata.shape)
-        t4 = time.perf_counter()
-        
-        print(f"Slice: {t2-t1:.6f}s, Decompress: {t3-t2:.6f}s, Reshape: {t4-t3:.6f}s, Total: {t4-start_total:.6f}s")
-        
+        return self._mmap[metadata.byte_offset:metadata.byte_offset + metadata.byte_size]
+
+    def _decompress_chunk(self, idx: int, compressed_chunk: np.ndarray):
+        metadata = self.chunks_metadata[idx]
+        decompressed_chunk = lzf.decompress(compressed_chunk.tobytes(), metadata.original_byte_size)
+        chunk = np.frombuffer(decompressed_chunk, dtype=metadata.dtype).reshape(metadata.shape)
         return chunk
 
     def __len__(self) -> int:
@@ -179,7 +178,7 @@ class ChunkStore:
 
     def close(self) -> None:
         pass  # no persistent resources to clean up
-    
+
     def get_metadata(self, idx: int) -> Dict[str, Any]:
         if idx not in self.chunks_metadata:
             raise IndexError(f"Chunk index {idx} not found")

@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from torch.utils.data import Dataset
 from pathlib import Path
 from intervaltree import IntervalTree
@@ -59,3 +60,23 @@ def worker_init_fn(worker_id):
     worker_info = torch.utils.data.get_worker_info()
     worker_info.dataset.populate_store_ref_cache()
     
+
+class BatchSampler:
+    def __init__(self, dataset_size: int, batch_size: int, shuffle: bool = True):
+        self.dataset_size = dataset_size
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+    
+    def __iter__(self):
+        if self.shuffle:
+            indices = np.random.permutation(self.dataset_size)
+        else:
+            indices = np.arange(self.dataset_size)
+        
+        for i in range(0, self.dataset_size, self.batch_size):
+            batch_indices = indices[i:i + self.batch_size]
+            if len(batch_indices) == self.batch_size:  # Only yield full batches
+                yield batch_indices.tolist()
+    
+    def __len__(self):
+        return self.dataset_size // self.batch_size
