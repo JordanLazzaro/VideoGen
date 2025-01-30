@@ -22,15 +22,15 @@ class LitDataModule(pl.LightningDataModule):
     def train_dataloader(self):
         return wds.WebLoader(
             self.train_dataset,
-            batch_size=self.model_config.tokenizer.training.batch_size,
+            batch_size=self.model_config.autoencoder.training.batch_size,
             shuffle=True,
-            num_workers=self.model_config.tokenizer.training.num_workers
+            num_workers=self.model_config.autoencoder.training.num_workers
         )
 
     def val_dataloader(self):
         return wds.WebLoader(
             self.val_dataset,
-            batch_size=self.model_config.tokenizer.training.batch_size,
+            batch_size=self.model_config.autoencoder.training.batch_size,
             shuffle=False,
-            num_workers=self.model_config.tokenizer.training.num_workers
+            num_workers=self.model_config.autoencoder.training.num_workers
         )
