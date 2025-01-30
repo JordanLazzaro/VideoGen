@@ -1,21 +1,26 @@
 import torch
 import pytorch_lightning as pl
-from videogamegen.data.utils import get_dataset
+import webdataset as wds
+from videogamegen.data.utils import process_npz
 
 
 class LitDataModule(pl.LightningDataModule):
-    def __init__(self, model_config, data_config):
+    def __init__(self, model_config: Config, data_config: Config):
         super().__init__()
         self.model_config = model_config
         self.data_config = data_config
 
     def setup(self, stage=None):
         if stage == 'fit' or stage is None:
-            self.train_dataset = get_dataset(self.data_config, mode='train')
-            self.val_dataset = get_dataset(self.data_config, mode='val')
+            self.dataset = (
+                wds.WebDataset(shard_paths)
+                .decode()
+                .to_tuple("npz")
+                .map(process_npz)
+        )
 
     def train_dataloader(self):
-        return torch.utils.data.DataLoader(
+        return wds.WebLoader(
             self.train_dataset,
             batch_size=self.model_config.tokenizer.training.batch_size,
             shuffle=True,
@@ -23,7 +28,7 @@ class LitDataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self):
-        return torch.utils.data.DataLoader(
+        return wds.WebLoader(
             self.val_dataset,
             batch_size=self.model_config.tokenizer.training.batch_size,
             shuffle=False,
