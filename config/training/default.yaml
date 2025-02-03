@@ -1,0 +1,11 @@
+batch_size: 16
+    num_workers: 4
+    num_gpus: 1
+    max_epochs: 1024
+    tokenizer_lr: 1.0e-4
+    disc_lr: 1.0e-4
+    betas: [0.9, 0.99]
+    use_lr_schedule: false
+    weight_decay: 0.0
+    save_top_k: 2
+    checkpoint_dir: '/models/autoencoders/'
