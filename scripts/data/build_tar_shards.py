@@ -69,10 +69,12 @@ def process_video(
     target_size: tuple = (256, 256, 1),
     target_fps: Optional[float] = None,
     shard_size: int = 4096,
-    dataset_name: str = 'gameboy'
+    dataset_name: str = 'gameboy-longplays',
+    num_threads: int = 4
 ):
     """Process a video file and save frame shards to a tar file"""
-    with av.open(video_path) as container:
+    os.makedirs(output_dir, exist_ok=True)
+    with av.open(video_path, options={'threads': str(num_threads), 'thread_type': 'frame'}) as container:
         frames = []
         shard_idx = 0
         for frame in read_frames(container, target_fps):
@@ -92,38 +94,6 @@ def process_video(
             with tarfile.open(tar_path, "w") as tar:
                 save_shard(tar, frames, shard_idx)
 
-def process_videos_parallel(
-    video_paths: List[str],
-    output_dir: str,
-    target_size: tuple = (256, 256, 1),
-    target_fps: Optional[float] = None,
-    shard_size: int = 4096,
-    max_workers: int = 4
-):
-    """Process multiple videos in parallel"""
-    os.makedirs(output_dir, exist_ok=True)
-    
-    with tqdm(total=len(video_paths), desc="Processing videos", unit="video") as pbar:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-            futures = {
-                executor.submit(
-                    process_video, 
-                    path, 
-                    output_dir, 
-                    target_size, 
-                    target_fps,
-                    shard_size
-                ): path for path in video_paths
-            }
-            
-            for future in concurrent.futures.as_completed(futures):
-                try:
-                    future.result()
-                except Exception as exc:
-                    print(f"\nError processing {futures[future]}: {exc}")
-                finally:
-                    pbar.update(1)
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process video files into WebDataset format')
     parser.add_argument('--input_dir', help='Directory containing MP4 files')
@@ -142,11 +112,11 @@ if __name__ == '__main__':
     if not mp4_files:
         print(f"No MP4 files found in {args.input_dir}")
         exit(1)
-    
-    process_videos_parallel(
-        [str(f) for f in mp4_files],
-        output_dir=args.output_dir,
-        target_fps=args.target_fps,
-        shard_size=args.shard_size,
-        max_workers=args.workers
-    )
+
+    for f in tqdm(mp4_files, desc='Processing videos into tar files'):
+        process_video(
+            video_path=f,
+            output_dir=args.output_dir,
+            target_fps=args.target_fps,
+            shard_size=args.shard_size
+        )
