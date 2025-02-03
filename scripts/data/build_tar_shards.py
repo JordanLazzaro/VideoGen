@@ -9,6 +9,7 @@ from typing import List, Optional, Iterator, Tuple
 from pathlib import Path
 import io
 import json
+import argparse
 
 def read_frames(container: av.container.Container, target_fps: Optional[float] = None) -> Iterator[av.frame.Frame]:
     """Generator that yields frames at the desired frame rate.
@@ -36,8 +37,8 @@ def process_frame(frame: av.frame.Frame, target_size: Tuple[int, ...]) -> np.nda
     arr = frame.to_ndarray(format='rgb24')
     if not np.any(arr):
         return None
-    arr = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
-    return cv2.resize(arr, target_size)
+    arr = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)[..., np.newaxis]
+    return cv2.resize(arr, target_size[:2])
 
 def save_shard(tar: tarfile.TarFile, frames: List[np.ndarray], shard_idx: int) -> int:
     """Save a shard of frames to the tar file"""
@@ -50,66 +51,45 @@ def save_shard(tar: tarfile.TarFile, frames: List[np.ndarray], shard_idx: int) -
     np.savez_compressed(buffer, frames=shard_array)
     buffer.seek(0)
     
-    info = tarfile.TarInfo(f"{shard_idx:06d}.npy")
-    info.size = len(buffer.getvalue())
-    tar.addfile(info, buffer)
+    meta = {
+        "shape": shard_array.shape,
+        "dtype": str(shard_array.dtype)
+    }
+    
+    meta_buffer = io.BytesIO(json.dumps(meta).encode('utf-8'))
+    meta_info = tarfile.TarInfo(f"{shard_idx:08d}.json")
+    meta_info.size = len(meta_buffer.getvalue())
+    tar.addfile(meta_info, meta_buffer)
     
     return shard_array.shape[0]
-
-def get_video_metadata(container: av.container.Container, target_fps: Optional[float] = None) -> dict:
-    """Extract video metadata"""
-    stream = container.streams.video[0]
-    stream_time_base = float(stream.time_base)
-    original_fps = float(stream.average_rate)
-    
-    return {
-        "original_width": stream.width,
-        "original_height": stream.height,
-        "original_fps": original_fps,
-        "target_fps": target_fps if target_fps is not None else original_fps,
-        "duration_seconds": float(stream.duration * stream_time_base),
-        "total_frames": stream.frames
-    }
 
 def process_video(
     video_path: str,
     output_dir: str,
     target_size: tuple = (256, 256, 1),
     target_fps: Optional[float] = None,
-    shard_size: int = 4096
+    shard_size: int = 4096,
+    dataset_name: str = 'gameboy'
 ):
     """Process a video file and save frame shards to a tar file"""
-    longplay_id, video_id, _ = os.path.basename(video_path).split('_', maxsplit=2)
-    tar_path = os.path.join(output_dir, f"{longplay_id}_{video_id}_%06d.tar" % 0)
-    
     with av.open(video_path) as container:
-        metadata = {
-            "video_path": video_path,
-            "target_size": target_size,
-            "shard_size": shard_size,
-            **get_video_metadata(container, target_fps)
-        }
-        
-        with tarfile.open(tar_path, "w") as tar:
-            meta_buffer = io.BytesIO(json.dumps(metadata).encode('utf-8'))
-            meta_info = tarfile.TarInfo("_metadata.json")
-            meta_info.size = len(meta_buffer.getvalue())
-            tar.addfile(meta_info, meta_buffer)
-            
-            frames = []
-            shard_idx = 0
-            
-            for frame in read_frames(container, target_fps):
-                frame_arr = process_frame(frame, target_size)
-                if frame_arr is not None:
-                    frames.append(frame_arr)
-                    
-                    if len(frames) == shard_size:
+        frames = []
+        shard_idx = 0
+        for frame in read_frames(container, target_fps):
+            frame_arr = process_frame(frame, target_size)
+            if frame_arr is not None:
+                frames.append(frame_arr)
+                
+                if len(frames) == shard_size:
+                    tar_path = os.path.join(output_dir, f"{dataset_name}-{shard_idx:08d}.tar")
+                    with tarfile.open(tar_path, "w") as tar:
                         save_shard(tar, frames, shard_idx)
-                        shard_idx += 1
-                        frames = []
-            
-            if frames:
+                    frames = []
+                    shard_idx += 1
+        
+        if frames:
+            tar_path = os.path.join(output_dir, f"{dataset_name}-{shard_idx:08d}.tar")
+            with tarfile.open(tar_path, "w") as tar:
                 save_shard(tar, frames, shard_idx)
 
 def process_videos_parallel(
@@ -145,12 +125,28 @@ def process_videos_parallel(
                     pbar.update(1)
 
 if __name__ == '__main__':
-    mp4_files = list(Path('./gameboy_longplays_mp4').glob('*.mp4'))
+    parser = argparse.ArgumentParser(description='Process video files into WebDataset format')
+    parser.add_argument('--input_dir', help='Directory containing MP4 files')
+    parser.add_argument('--output_dir', default='data/longplay_tar_files', 
+                       help='Output directory for tar files')
+    parser.add_argument('--target_fps', type=float, default=20.0,
+                       help='Target FPS for processed videos')
+    parser.add_argument('--shard_size', type=int, default=4096,
+                       help='Number of frames per shard')
+    parser.add_argument('--workers', type=int, default=4,
+                       help='Number of worker processes')
+    
+    args = parser.parse_args()
+    
+    mp4_files = list(Path(args.input_dir).glob('*.mp4'))
+    if not mp4_files:
+        print(f"No MP4 files found in {args.input_dir}")
+        exit(1)
     
     process_videos_parallel(
         [str(f) for f in mp4_files],
-        output_dir="data/longplay_tar_files",
-        target_fps=30.0,
-        shard_size=1024,
-        max_workers=32
+        output_dir=args.output_dir,
+        target_fps=args.target_fps,
+        shard_size=args.shard_size,
+        max_workers=args.workers
     )
